@@ -1,0 +1,10 @@
+.DS_Store
+.godot/
+godot/.godot/
+godot/export.cfg
+godot/export_presets.cfg
+build/
+dist/
+*.tmp
+*.log
+

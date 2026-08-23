@@ -14,4 +14,6 @@ attack = 6
 attack_range = 1
 speed = 3
 skill_name = "무리 물기"
+skill_text = "대상을 크게 물어뜯고 아군 돌격 기물의 공격력을 올립니다."
+max_mana = 10
 trait_text = "초원/늑대 조합에서 공격력이 살아나는 돌격 기물입니다."

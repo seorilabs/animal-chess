@@ -14,4 +14,6 @@ attack = 4
 attack_range = 2
 speed = 2
 skill_name = "빙판"
+skill_text = "발밑에 빙판을 깔아 주변 적의 행동을 크게 늦춥니다."
+max_mana = 8
 trait_text = "적 행동을 늦춰 전투 흐름을 제어하는 극지 주술 기물입니다."

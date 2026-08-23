@@ -461,11 +461,11 @@ func _refresh_detail() -> void:
 	_detail_panel.visible = unit != null
 	if unit == null:
 		return
-	_detail_label.text = "%s  ★%d\n%s / %s  비용 %d\n체력 %d  공격 %d  사거리 %d  속도 %d\n기술: %s\n특성: %s" % [
+	_detail_label.text = "%s  ★%d   %s / %s   비용 %d\n체력 %d  공격 %d  사거리 %d  속도 %d  마나 %d\n[%s] %s\n%s" % [
 		unit.def.display_name, unit.star,
 		unit.def.habitat_label(), unit.def.role_label(), unit.def.cost,
-		unit.max_hp, unit.attack, unit.attack_range, unit.speed,
-		unit.def.skill_name, unit.def.trait_text,
+		unit.max_hp, unit.attack, unit.attack_range, unit.speed, unit.max_mana,
+		unit.def.skill_name, unit.def.skill_text, unit.def.trait_text,
 	]
 
 

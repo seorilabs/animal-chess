@@ -12,6 +12,9 @@ enum Kind {
 	POISON,    ## target에게 독이 걸림 (amount = 남은 틱)
 	SLOW,      ## target의 행동이 늦춰짐
 	HEAL,      ## target이 amount만큼 회복
+	SHIELD,    ## target이 amount만큼 보호막을 얻음
+	SKILL,     ## actor가 스킬을 발동
+	BUFF,      ## target이 강화됨
 	DEATH,     ## target이 쓰러짐
 }
 
@@ -49,6 +52,15 @@ static func damage(actor_uid_value: int, target: UnitState, amount_value: int) -
 	event.target_uid = target.uid
 	event.to = target.position()
 	event.amount = amount_value
+	return event
+
+
+static func skill(actor: UnitState) -> CombatEvent:
+	var event := CombatEvent.new()
+	event.kind = Kind.SKILL
+	event.actor_uid = actor.uid
+	event.from = actor.position()
+	event.to = actor.position()
 	return event
 
 

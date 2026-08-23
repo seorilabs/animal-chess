@@ -14,4 +14,6 @@ attack = 3
 attack_range = 2
 speed = 3
 skill_name = "당근 응원"
+skill_text = "아군 전체를 응원해 행동 속도를 끌어올립니다."
+max_mana = 6
 trait_text = "아군 공격 속도를 끌어올리는 초반 지원 기물입니다."

@@ -77,6 +77,7 @@ func _draw() -> void:
 	_draw_animal(unit.def.id)
 	_draw_attack_effect(unit.def.id)
 	_draw_hp_bar()
+	_draw_mana_bar()
 	_draw_stars()
 	_draw_hit_flash()
 
@@ -181,14 +182,26 @@ func _draw_team_ring() -> void:
 
 
 func _draw_hp_bar() -> void:
-	_px(8, 3, 32, 4, Color8(35, 38, 40))
+	_px(8, 2, 32, 4, Color8(35, 38, 40))
 	var ratio := clampf(float(unit.hp) / float(maxi(1, unit.max_hp)), 0.0, 1.0)
-	_px(9, 4, int(round(30.0 * ratio)), 2, Color8(88, 214, 116))
+	_px(9, 3, int(round(30.0 * ratio)), 2, Color8(88, 214, 116))
+	if unit.shield > 0:
+		var shield_ratio := clampf(float(unit.shield) / float(maxi(1, unit.max_hp)), 0.0, 1.0)
+		_px(9, 3, int(round(30.0 * shield_ratio)), 2, Color8(214, 226, 240))
+
+
+func _draw_mana_bar() -> void:
+	if unit.max_mana <= 0:
+		return
+	_px(8, 7, 32, 3, Color8(28, 34, 44))
+	var ratio := clampf(float(unit.mana) / float(unit.max_mana), 0.0, 1.0)
+	var color := Color8(244, 224, 120) if unit.is_skill_ready() else Color8(110, 200, 232)
+	_px(9, 8, int(round(30.0 * ratio)), 1, color)
 
 
 func _draw_stars() -> void:
 	for i in range(unit.star):
-		_px(36 - i * 5, 8, 3, 3, Color8(244, 211, 94))
+		_px(36 - i * 5, 11, 3, 3, Color8(244, 211, 94))
 
 
 func _draw_animal(id: String) -> void:

@@ -14,4 +14,6 @@ attack = 7
 attack_range = 1
 speed = 4
 skill_name = "후방 기습"
+skill_text = "체력이 가장 적은 적 옆으로 파고들어 강하게 물어뜯습니다."
+max_mana = 10
 trait_text = "체력이 낮은 적을 노리기 쉬운 교란형 근접 기물입니다."

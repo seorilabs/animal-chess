@@ -14,4 +14,6 @@ attack = 4
 attack_range = 1
 speed = 1
 skill_name = "등껍질 보호막"
+skill_text = "껍질 안으로 움츠려 보호막을 두르고 한동안 피해를 흡수합니다."
+max_mana = 8
 trait_text = "전열에서 오래 버티며 아군 후열이 공격할 시간을 벌어줍니다."

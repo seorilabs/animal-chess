@@ -14,4 +14,6 @@ attack = 9
 attack_range = 1
 speed = 4
 skill_name = "눈보라 도약"
+skill_text = "적 후열로 뛰어들어 착지 지점 주변에 눈보라 피해를 줍니다."
+max_mana = 12
 trait_text = "한 번에 적 후열까지 파고드는 고급 교란 기물입니다."

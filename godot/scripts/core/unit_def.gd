@@ -39,6 +39,9 @@ const ROLE_LABELS := {
 @export_range(1, 8) var attack_range: int = 1
 @export_range(1, 8) var speed: int = 2
 @export var skill_name: String = ""
+@export var skill_text: String = ""
+## 스킬 발동에 필요한 마나. 공격할 때와 맞을 때 쌓인다.
+@export_range(4, 20) var max_mana: int = 10
 @export var trait_text: String = ""
 
 

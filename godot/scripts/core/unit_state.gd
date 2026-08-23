@@ -25,6 +25,10 @@ var speed: int
 
 var cooldown: int = 0
 var poison: int = 0
+var mana: int = 0
+var max_mana: int = 10
+## 피해를 먼저 흡수하는 보호막.
+var shield: int = 0
 ## 시너지로 붙는 전투 보정값.
 var regen: int = 0
 var poison_power: int = 0
@@ -56,9 +60,12 @@ func reset_stats() -> void:
 	attack = int(round(def.attack * (1.0 + STAR_ATTACK_STEP * star_bonus)))
 	attack_range = def.attack_range
 	speed = def.speed
+	max_mana = def.max_mana
 	hp = max_hp
 	cooldown = 0
 	poison = 0
+	mana = 0
+	shield = 0
 	regen = 0
 	poison_power = 0
 	chill = 0
@@ -79,6 +86,18 @@ func clone_for_battle() -> UnitState:
 
 func is_alive() -> bool:
 	return hp > 0
+
+
+func is_skill_ready() -> bool:
+	return mana >= max_mana
+
+
+## 마나를 쌓고 스킬이 준비됐는지 알려준다.
+func gain_mana(amount: int) -> bool:
+	if not is_alive():
+		return false
+	mana = mini(max_mana, mana + amount)
+	return is_skill_ready()
 
 
 func position() -> Vector2i:

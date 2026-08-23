@@ -14,4 +14,6 @@ attack = 8
 attack_range = 1
 speed = 1
 skill_name = "앞발 휩쓸기"
+skill_text = "앞발을 크게 휘둘러 주변 적을 한꺼번에 때리고 밀어냅니다."
+max_mana = 12
 trait_text = "느리지만 전열을 크게 흔드는 광역 돌격 기물입니다."

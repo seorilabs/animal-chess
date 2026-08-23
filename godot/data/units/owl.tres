@@ -14,4 +14,6 @@ attack = 4
 attack_range = 3
 speed = 2
 skill_name = "밤눈 지휘"
+skill_text = "약점을 짚어 아군 전체의 공격력을 올립니다."
+max_mana = 8
 trait_text = "후열에서 아군의 공격을 벼려주는 하늘 지원 기물입니다."

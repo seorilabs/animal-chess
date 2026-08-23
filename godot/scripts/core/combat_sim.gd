@@ -18,6 +18,11 @@ const BEAR_SPLASH_RADIUS := 1
 const POISON_BASE_TICKS := 3
 ## 숲 시너지 회복이 발동하는 주기(틱).
 const REGEN_INTERVAL := 5
+## 공격 한 번, 피해 한 번에 쌓이는 마나.
+const MANA_PER_ATTACK := 2
+const MANA_PER_HIT := 1
+## 스킬을 쓴 뒤 쉬는 틱.
+const SKILL_COOLDOWN := 3
 
 var units: Array[UnitState] = []
 var tick_count: int = 0
@@ -70,6 +75,11 @@ func tick() -> Array[CombatEvent]:
 		var target := _choose_target(unit)
 		if target == null:
 			continue
+		if unit.is_skill_ready():
+			Skills.cast(self, unit, events)
+			unit.mana = 0
+			unit.cooldown = SKILL_COOLDOWN
+			continue
 		if unit.distance_to(target) <= unit.attack_range:
 			_attack(unit, target, events)
 			unit.cooldown = maxi(2, 6 - unit.speed)
@@ -114,7 +124,7 @@ func _tick_poison(events: Array[CombatEvent]) -> void:
 		if not unit.is_alive() or unit.poison <= 0:
 			continue
 		unit.poison -= 1
-		_deal_damage(0, unit, POISON_DAMAGE, events)
+		deal_damage(0, unit, POISON_DAMAGE, events)
 
 
 func _tick_regen(events: Array[CombatEvent]) -> void:
@@ -146,7 +156,8 @@ func _choose_target(unit: UnitState) -> UnitState:
 
 func _attack(attacker: UnitState, target: UnitState, events: Array[CombatEvent]) -> void:
 	events.append(CombatEvent.attack(attacker, target))
-	_deal_damage(attacker.uid, target, attacker.attack, events)
+	attacker.gain_mana(MANA_PER_ATTACK)
+	deal_damage(attacker.uid, target, attacker.attack, events)
 
 	# 극지 시너지는 기물 종류와 무관하게 공격에 감속을 얹는다.
 	if attacker.chill > 0 and target.is_alive():
@@ -166,14 +177,40 @@ func _attack(attacker: UnitState, target: UnitState, events: Array[CombatEvent])
 				if not other.is_alive() or other.team == attacker.team or other == target:
 					continue
 				if target.distance_to(other) <= BEAR_SPLASH_RADIUS:
-					_deal_damage(attacker.uid, other, splash, events)
+					deal_damage(attacker.uid, other, splash, events)
 
 
-func _deal_damage(source_uid: int, target: UnitState, amount: int, events: Array[CombatEvent]) -> void:
-	if not target.is_alive():
+## 보호막을 먼저 깎고 남은 만큼 체력을 줄인다. 맞은 쪽은 마나를 얻는다.
+func deal_damage(source_uid: int, target: UnitState, amount: int, events: Array[CombatEvent]) -> void:
+	if not target.is_alive() or amount <= 0:
 		return
-	target.hp = maxi(0, target.hp - amount)
+	var absorbed := mini(target.shield, amount)
+	target.shield -= absorbed
+	var taken := amount - absorbed
+	target.hp = maxi(0, target.hp - taken)
 	events.append(CombatEvent.damage(source_uid, target, amount))
+	target.gain_mana(MANA_PER_HIT)
+
+
+## 팀 기준 살아있는 적 목록.
+func enemies_of(unit: UnitState) -> Array[UnitState]:
+	var result: Array[UnitState] = []
+	for other in units:
+		if other.is_alive() and other.team != unit.team:
+			result.append(other)
+	return result
+
+
+## 자신을 뺀 살아있는 아군 목록.
+func allies_of(unit: UnitState, include_self: bool = true) -> Array[UnitState]:
+	var result: Array[UnitState] = []
+	for other in units:
+		if not other.is_alive() or other.team != unit.team:
+			continue
+		if other == unit and not include_self:
+			continue
+		result.append(other)
+	return result
 
 
 func _step_toward(unit: UnitState, target: UnitState, events: Array[CombatEvent]) -> bool:
@@ -186,7 +223,7 @@ func _step_toward(unit: UnitState, target: UnitState, events: Array[CombatEvent]
 		options = [step_y, step_x]
 
 	for option in options:
-		if not _is_free(option):
+		if not is_free(option):
 			continue
 		var from_pos := unit.position()
 		unit.set_position(option)
@@ -195,7 +232,7 @@ func _step_toward(unit: UnitState, target: UnitState, events: Array[CombatEvent]
 	return false
 
 
-func _is_free(pos: Vector2i) -> bool:
+func is_free(pos: Vector2i) -> bool:
 	if pos.x < 0 or pos.x >= board_size.x or pos.y < 0 or pos.y >= board_size.y:
 		return false
 	for unit in units:

@@ -271,7 +271,12 @@ func _on_buy(offer_index: int) -> void:
 	if not _is_prep():
 		return
 	var unit_name := catalog.get_def(run.shop_offers[offer_index]).display_name
-	_report(run.buy(offer_index), "%s 구매." % unit_name)
+	var action := run.buy(offer_index)
+	if action == RunState.Action.OK and not run.last_merges.is_empty():
+		var merged: Dictionary = run.last_merges[-1]
+		_set_message("%s 합성! ★%d가 되었습니다." % [merged["display_name"], merged["star"]])
+	else:
+		_report(action, "%s 구매." % unit_name)
 	_refresh_all()
 
 

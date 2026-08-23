@@ -30,6 +30,8 @@ var gold: int = START_GOLD
 var bench: Array[UnitState] = []
 var board: Dictionary = {}
 var shop_offers: PackedStringArray = PackedStringArray()
+## 마지막 구매에서 일어난 합성 결과. 화면이 안내 문구를 만들 때 쓴다.
+var last_merges: Array[Dictionary] = []
 
 var catalog: UnitCatalog
 var rng := RandomNumberGenerator.new()
@@ -50,6 +52,7 @@ func start(run_seed: int) -> void:
 	gold = START_GOLD
 	board.clear()
 	bench.clear()
+	last_merges.clear()
 	bench.resize(BENCH_SIZE)
 	roll_shop()
 
@@ -97,9 +100,11 @@ func reroll() -> Action:
 func buy(offer_index: int) -> Action:
 	if offer_index < 0 or offer_index >= shop_offers.size():
 		return Action.INVALID
-	if owned_count() >= owned_cap():
-		return Action.OWNED_CAP_REACHED
 	var unit_def := catalog.get_def(shop_offers[offer_index])
+	# 합성으로 이어지는 구매는 보유 한도에 걸려도 허용한다.
+	# 막으면 마지막 한 마리를 못 사서 합성이 영영 불가능해진다.
+	if owned_count() >= owned_cap() and not _completes_merge(unit_def.id):
+		return Action.OWNED_CAP_REACHED
 	if gold < unit_def.cost:
 		return Action.NOT_ENOUGH_GOLD
 	var slot := first_empty_bench_slot()
@@ -109,7 +114,25 @@ func buy(offer_index: int) -> Action:
 	gold -= unit_def.cost
 	bench[slot] = UnitState.create(unit_def, UnitState.Team.PLAYER)
 	shop_offers[offer_index] = _random_offer()
+	last_merges = Merge.resolve(self)
 	return Action.OK
+
+
+## 이 기물을 한 마리 더 사면 곧바로 합성이 되는가.
+func _completes_merge(id: String) -> bool:
+	var same := 0
+	for unit in owned_units():
+		if unit.def.id == id and unit.star == 1:
+			same += 1
+	return same >= Merge.UNITS_PER_STAR - 1
+
+
+func owned_units() -> Array[UnitState]:
+	var units := deployed_units()
+	for unit in bench:
+		if unit != null:
+			units.append(unit)
+	return units
 
 
 func _random_offer() -> String:

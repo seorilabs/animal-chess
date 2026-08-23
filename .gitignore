@@ -8,3 +8,4 @@ dist/
 *.tmp
 *.log
 
+godot/assets/audio/raw/

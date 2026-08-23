@@ -12,8 +12,21 @@ Pixel-style animal auto battler built with Godot.
 - AI waves match the player's deployed unit count in the current round
 - Round wrap-up panel after combat with result, remaining units, reward/damage, and next caps
 - Selected-unit detail panel for stats, role, skill, and tactical trait
-- Automatic tick-based combat
-- Procedural 48x48 pixel-style unit drawings for early readability testing
+- Automatic tick-based combat with mana-charged skills
+- Generated pixel-art sprites, BGM, and procedurally synthesized SFX
+
+## Regenerating Assets
+
+Art (Gemini) and music (Stable Audio) are manifest-driven; sound effects are
+synthesized locally with no external dependency.
+
+```bash
+python3 tools/generate_sfx.py
+```
+
+Art and music regeneration go through the `game-asset-pipeline` and
+`game-sound-pipeline` skills using `godot/assets/art/asset-manifest.json` and
+`godot/assets/audio/sound-manifest.json`.
 
 ## Run
 

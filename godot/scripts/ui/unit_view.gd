@@ -28,6 +28,13 @@ static var _star_texture: Texture2D = null
 var unit: UnitState = null
 var selected := false
 
+## 준비 단계에서 위아래로 살짝 떠 있는 폭과 속도.
+const IDLE_BOB_PIXELS := 0.7
+const IDLE_BOB_SPEED := 2.2
+
+## 같은 칸의 기물이 한 몸처럼 흔들리지 않도록 uid로 위상을 어긋나게 한다.
+var idle_bob := true
+
 var _motion: Motion = Motion.NONE
 var _motion_direction := Vector2.ZERO
 var _motion_start_ms := 0
@@ -74,10 +81,14 @@ func play(motion: Motion, direction: Vector2i) -> void:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pivot_offset = size * 0.5
 
 
 func _process(_delta: float) -> void:
+	pivot_offset = size * 0.5
 	if _motion == Motion.NONE:
+		if idle_bob:
+			queue_redraw()
 		return
 	if _progress() >= 1.0:
 		_motion = Motion.NONE
@@ -142,7 +153,7 @@ func _duration_for(motion: Motion) -> int:
 func _current_offset() -> Vector2:
 	var progress := _progress()
 	if _motion == Motion.NONE or progress >= 1.0:
-		return Vector2.ZERO
+		return _idle_offset()
 
 	var direction := _motion_direction
 	direction = Vector2(1, 0) if direction.length_squared() == 0.0 else direction.normalized()
@@ -156,6 +167,15 @@ func _current_offset() -> Vector2:
 			return -direction * 8.0 * (1.0 - progress)
 		_:
 			return Vector2.ZERO
+
+
+## 가만히 있을 때도 살짝 떠 있게 해 화면이 굳어 보이지 않게 한다.
+## 위상을 uid로 어긋내 여러 기물이 한 몸처럼 움직이지 않게 한다.
+func _idle_offset() -> Vector2:
+	if not idle_bob or unit == null:
+		return Vector2.ZERO
+	var phase := Time.get_ticks_msec() / 1000.0 * IDLE_BOB_SPEED + unit.uid * 0.7
+	return Vector2(0.0, sin(phase) * IDLE_BOB_PIXELS)
 
 
 func _draw_sprite() -> void:

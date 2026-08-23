@@ -7,6 +7,9 @@ extends Control
 
 signal cell_pressed(cell: Vector2i)
 
+## 처치와 스킬에 쓰는 파티클 종류. BurstEffect.Kind를 그대로 노출한다.
+const BurstKind := BurstEffect.Kind
+
 ## 칸 대비 기물이 남기는 여백 비율.
 const UNIT_INSET := 0.05
 
@@ -25,10 +28,46 @@ var interactive := true
 var selected_cell := Vector2i(-1, -1)
 
 var _views: Dictionary = {}
+var _shake := Vector2.ZERO
+var _shake_amount := 0.0
+var _shake_phase := 0.0
+var _effect_seed := 1
+
+
+## 흔들림이 몇 프레임 만에 잦아드는 속도.
+const SHAKE_DECAY := 9.0
+const SHAKE_FREQUENCY := 46.0
+
+
+## 쓰러진 기물이 사라지기까지 걸리는 시간.
+const DEATH_FADE := 0.35
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# 피해 숫자가 보드 밖으로 튀어나가지 않게 한다.
+	clip_contents = true
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	if _shake_amount <= 0.01:
+		if _shake != Vector2.ZERO:
+			_shake = Vector2.ZERO
+			layout_units()
+			queue_redraw()
+		return
+
+	_shake_amount = maxf(0.0, _shake_amount - _shake_amount * SHAKE_DECAY * delta)
+	_shake_phase += delta * SHAKE_FREQUENCY
+	_shake = Vector2(sin(_shake_phase), cos(_shake_phase * 1.37)) * _shake_amount
+	layout_units()
+	queue_redraw()
+
+
+## 화면을 짧게 흔든다. 값이 클수록 세게 흔들린다.
+func shake(amount: float) -> void:
+	_shake_amount = maxf(_shake_amount, amount)
 
 
 func _notification(what: int) -> void:
@@ -65,7 +104,7 @@ func sync(units: Array[UnitState]) -> void:
 
 	for uid in _views.keys():
 		if not live_uids.has(uid):
-			(_views[uid] as UnitView).queue_free()
+			_fade_out(_views[uid])
 			_views.erase(uid)
 
 	layout_units()
@@ -80,8 +119,17 @@ func layout_units() -> void:
 		var view: UnitView = _views[uid]
 		if view.unit == null:
 			continue
-		view.position = Vector2(view.unit.position()) * unit_size + inset
+		view.position = Vector2(view.unit.position()) * unit_size + inset + _shake
 		view.size = unit_size - inset * 2.0
+
+
+## 사라진 기물은 바로 지우지 않고 잠깐 흐려지며 빠진다.
+func _fade_out(view: UnitView) -> void:
+	view.set_process(false)
+	var tween := view.create_tween().set_parallel(true)
+	tween.tween_property(view, "modulate:a", 0.0, DEATH_FADE)
+	tween.tween_property(view, "scale", Vector2(0.7, 0.7), DEATH_FADE)
+	tween.chain().tween_callback(view.queue_free)
 
 
 func view_for_uid(uid: int) -> UnitView:
@@ -105,6 +153,7 @@ func clear() -> void:
 	queue_redraw()
 
 
+
 func _view_for(unit: UnitState) -> UnitView:
 	var view: UnitView = _views.get(unit.uid)
 	if view != null:
@@ -115,7 +164,36 @@ func _view_for(unit: UnitState) -> UnitView:
 	return view
 
 
+## 칸 한가운데의 화면 좌표.
+func cell_center(cell: Vector2i) -> Vector2:
+	var unit_size := cell_size()
+	return (Vector2(cell) + Vector2(0.5, 0.5)) * unit_size
+
+
+func popup_damage(cell: Vector2i, amount: int, on_player: bool) -> void:
+	_add_popup(DamagePopup.damage(amount, on_player), cell)
+
+
+func popup_heal(cell: Vector2i, amount: int) -> void:
+	_add_popup(DamagePopup.heal(amount), cell)
+
+
+func burst(cell: Vector2i, kind: BurstEffect.Kind) -> void:
+	_effect_seed += 1
+	var effect := BurstEffect.create(kind, _effect_seed)
+	effect.position = cell_center(cell)
+	add_child(effect)
+
+
+func _add_popup(popup: DamagePopup, cell: Vector2i) -> void:
+	var center := cell_center(cell)
+	popup.size = Vector2(cell_size().x, 0)
+	popup.position = center - Vector2(cell_size().x * 0.5, cell_size().y * 0.55)
+	add_child(popup)
+
+
 func _draw() -> void:
+	draw_set_transform(_shake)
 	var unit_size := cell_size()
 	for y in range(board_size.y):
 		for x in range(board_size.x):

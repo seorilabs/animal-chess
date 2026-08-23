@@ -5,6 +5,9 @@
 extends Control
 
 const COMBAT_TICK_SECONDS := 0.2
+## 스킬과 처치 순간에 다음 틱을 늦추는 시간.
+const HITSTOP_SKILL := 0.12
+const HITSTOP_DEATH := 0.18
 
 const ACTION_MESSAGES := {
 	RunState.Action.NOT_ENOUGH_GOLD: "골드가 부족합니다.",
@@ -18,6 +21,8 @@ enum Selection { NONE, BENCH, BOARD }
 
 var catalog: UnitCatalog
 var profile: Profile
+var settings: SettingsService
+var audio: AudioService
 var run: RunState
 var sim := CombatSim.new()
 
@@ -42,6 +47,7 @@ var _dimmer: ColorRect
 var _wrapup: WrapupSheet
 var _preview: PreviewSheet
 var _codex: CodexSheet
+var _settings_sheet: SettingsSheet
 var _combat_timer: Timer
 
 var _reward_choices: Array[Reward] = []
@@ -52,6 +58,12 @@ var _ad_reward_used := false
 func _ready() -> void:
 	catalog = UnitCatalog.load_default()
 	profile = SaveService.load_profile()
+	settings = SettingsService.load_settings()
+
+	audio = AudioService.new()
+	add_child(audio)
+	audio.set_volumes(settings.music_volume, settings.sfx_volume)
+
 	_build_ui()
 	_resume_or_start()
 
@@ -86,7 +98,9 @@ func _enter_prep(message: String) -> void:
 	_reward_picks_left = 0
 	_ad_reward_used = false
 	_codex.visible = false
+	_settings_sheet.visible = false
 	_update_dimmer()
+	audio.play_bgm(AudioService.Track.PREP)
 	_clear_selection()
 	_board.interactive = true
 	_set_message(message)
@@ -167,6 +181,11 @@ func _build_header() -> Control:
 	codex_button.pressed.connect(_on_codex)
 	header.add_child(codex_button)
 
+	var settings_button := Button.new()
+	settings_button.text = "설정"
+	settings_button.pressed.connect(_on_settings)
+	header.add_child(settings_button)
+
 	var new_button := Button.new()
 	new_button.text = "새 게임"
 	new_button.pressed.connect(func() -> void: new_run())
@@ -242,9 +261,17 @@ func _build_overlays() -> void:
 	_codex.closed.connect(_update_dimmer)
 	center.add_child(_codex)
 
+	_settings_sheet = SettingsSheet.new()
+	_settings_sheet.volumes_changed.connect(_on_volumes_changed)
+	_settings_sheet.reset_requested.connect(_on_reset_data)
+	_settings_sheet.closed.connect(_update_dimmer)
+	center.add_child(_settings_sheet)
+
 
 func _update_dimmer() -> void:
-	_dimmer.visible = _wrapup.visible or _preview.visible or _codex.visible
+	_dimmer.visible = (
+		_wrapup.visible or _preview.visible or _codex.visible or _settings_sheet.visible
+	)
 
 
 # --- 준비 단계 입력 -----------------------------------------------------
@@ -263,16 +290,17 @@ func _on_board_cell_pressed(cell: Vector2i) -> void:
 
 	match _selection:
 		Selection.BENCH:
-			_report(run.deploy(_selected_bench, cell), "배치했습니다.")
+			_report(run.deploy(_selected_bench, cell), "배치했습니다.", "sfx_place")
 			_clear_selection()
 		Selection.BOARD:
-			_report(run.relocate(_selected_cell, cell), "이동했습니다.")
+			_report(run.relocate(_selected_cell, cell), "이동했습니다.", "sfx_place")
 			_clear_selection()
 		_:
 			if run.board.has(cell):
 				_selection = Selection.BOARD
 				_selected_cell = cell
 				_selected_bench = -1
+				audio.play_sfx("sfx_tap")
 				_set_message("%s 선택." % (run.board[cell] as UnitState).def.display_name)
 	_refresh_all()
 
@@ -282,7 +310,7 @@ func _on_bench_slot_pressed(index: int) -> void:
 		return
 
 	if _selection == Selection.BOARD:
-		_report(run.recall(_selected_cell, index), "대기석으로 옮겼습니다.")
+		_report(run.recall(_selected_cell, index), "대기석으로 옮겼습니다.", "sfx_place")
 		_clear_selection()
 		_refresh_all()
 		return
@@ -295,6 +323,7 @@ func _on_bench_slot_pressed(index: int) -> void:
 	_selection = Selection.BENCH
 	_selected_bench = index
 	_selected_cell = Vector2i(-1, -1)
+	audio.play_sfx("sfx_tap")
 	_set_message("%s 선택." % run.bench[index].def.display_name)
 	_refresh_all()
 
@@ -306,35 +335,66 @@ func _on_buy(offer_index: int) -> void:
 	var action := run.buy(offer_index)
 	if action == RunState.Action.OK and not run.last_merges.is_empty():
 		var merged: Dictionary = run.last_merges[-1]
+		audio.play_sfx("sfx_merge")
+		_board.shake(6.0)
 		_set_message("%s 합성! ★%d가 되었습니다." % [merged["display_name"], merged["star"]])
 	else:
-		_report(action, "%s 구매." % unit_name)
+		_report(action, "%s 구매." % unit_name, "sfx_buy")
 	_refresh_all()
 
 
 func _on_reroll() -> void:
 	if not _is_prep():
 		return
-	_report(run.reroll(), "상점을 새로고침했습니다.")
+	_report(run.reroll(), "상점을 새로고침했습니다.", "sfx_reroll")
 	_refresh_all()
 
 
 func _on_codex() -> void:
+	audio.play_sfx("sfx_tap")
 	_codex.open(catalog, profile)
 	_update_dimmer()
+
+
+func _on_settings() -> void:
+	audio.play_sfx("sfx_tap")
+	_settings_sheet.open(settings)
+	_update_dimmer()
+
+
+func _on_volumes_changed(music: float, sfx: float) -> void:
+	settings.music_volume = music
+	settings.sfx_volume = sfx
+	settings.save()
+	audio.set_volumes(music, sfx)
+	audio.play_sfx("sfx_tap")
+
+
+## 저장된 런과 도감 기록을 모두 지우고 새로 시작한다.
+func _on_reset_data() -> void:
+	SaveService.clear_all()
+	profile = SaveService.load_profile()
+	_settings_sheet.visible = false
+	new_run()
+	_set_message("저장 데이터를 초기화했습니다.")
 
 
 func _on_preview() -> void:
 	if _combat_running or _wrapup_active:
 		return
+	audio.play_sfx("sfx_tap")
 	_preview.open(run)
 	_update_dimmer()
 
 
-func _report(action: RunState.Action, success_message: String) -> void:
+func _report(
+	action: RunState.Action, success_message: String, success_sfx: String = "sfx_tap"
+) -> void:
 	if action == RunState.Action.OK:
+		audio.play_sfx(success_sfx)
 		_set_message(success_message)
 		return
+	audio.play_sfx("sfx_denied")
 	_set_message(str(ACTION_MESSAGES.get(action, "")))
 
 
@@ -368,6 +428,7 @@ func _start_combat() -> void:
 
 	_combat_running = true
 	_board.interactive = false
+	audio.play_bgm(AudioService.Track.BATTLE)
 	_preview.visible = false
 	_update_dimmer()
 	_clear_selection()
@@ -377,6 +438,8 @@ func _start_combat() -> void:
 
 
 func _on_combat_tick() -> void:
+	# 직전 틱에서 히트스톱으로 늘려둔 간격을 되돌린다.
+	_combat_timer.wait_time = COMBAT_TICK_SECONDS
 	var events := sim.tick()
 	_apply_events(events)
 	_board.sync(_alive_units())
@@ -395,17 +458,49 @@ func _alive_units() -> Array[UnitState]:
 	return alive
 
 
+## 시뮬레이션이 뱉은 사건을 애니메이션과 소리로 옮긴다.
+## 사건 하나가 끝나기를 기다리지 않고 같은 틱에 전부 반영한다.
 func _apply_events(events: Array[CombatEvent]) -> void:
+	var hitstop := 0.0
 	for event in events:
 		match event.kind:
 			CombatEvent.Kind.MOVE:
 				_play(event.actor_uid, UnitView.Motion.STEP, event.to - event.from)
 			CombatEvent.Kind.ATTACK:
 				_play(event.actor_uid, UnitView.Motion.ATTACK, event.to - event.from)
+				audio.play_sfx(_attack_sfx(event.actor_uid))
 			CombatEvent.Kind.DAMAGE:
 				_play(event.target_uid, UnitView.Motion.HIT, Vector2i.ZERO)
+				_board.popup_damage(event.to, event.amount, _is_player(event.target_uid))
+			CombatEvent.Kind.HEAL:
+				_board.popup_heal(event.to, event.amount)
+			CombatEvent.Kind.SKILL:
+				audio.play_sfx("sfx_skill")
+				_board.burst(event.to, BoardView.BurstKind.SKILL)
+				_board.shake(5.0)
+				hitstop = maxf(hitstop, HITSTOP_SKILL)
+			CombatEvent.Kind.DEATH:
+				audio.play_sfx("sfx_death")
+				_board.burst(event.to, BoardView.BurstKind.DEATH)
+				_board.shake(8.0)
+				hitstop = maxf(hitstop, HITSTOP_DEATH)
 			_:
 				pass
+	if hitstop > 0.0:
+		# 다음 틱을 잠깐 늦춰 타격이 눈에 남게 한다.
+		_combat_timer.start(COMBAT_TICK_SECONDS + hitstop)
+
+
+func _is_player(uid: int) -> bool:
+	var unit := sim.unit_by_uid(uid)
+	return unit != null and unit.team == UnitState.Team.PLAYER
+
+
+func _attack_sfx(uid: int) -> String:
+	var unit := sim.unit_by_uid(uid)
+	if unit != null and unit.attack_range > 1:
+		return "sfx_arrow"
+	return "sfx_attack"
 
 
 func _play(uid: int, motion: UnitView.Motion, direction: Vector2i) -> void:
@@ -422,6 +517,7 @@ func _finish_combat() -> void:
 	var rewards := run.apply_result(result, enemy_alive)
 
 	_combat_running = false
+	audio.play_sting(result == CombatSim.Result.PLAYER_WIN)
 	if run.is_over():
 		profile.record_run_end(run.outcome == RunState.Outcome.VICTORY)
 		SaveService.save_profile(profile)
@@ -477,6 +573,7 @@ func _run_end_text() -> String:
 func _on_reward_chosen(index: int) -> void:
 	if _reward_picks_left <= 0 or index < 0 or index >= _reward_choices.size():
 		return
+	audio.play_sfx("sfx_levelup")
 	var reward := _reward_choices[index]
 	if not reward.grant(run):
 		_wrapup.set_body("대기석이 가득 차 기물을 받을 수 없습니다. 다른 보상을 고르세요.")

@@ -6,10 +6,17 @@ const ICON_SIZE := Vector2(30, 30)
 const HEALTH_ICON_PATH := "res://assets/art/icon_health.png"
 const GOLD_ICON_PATH := "res://assets/art/icon_gold.png"
 
+## 값이 바뀔 때 숫자를 세는 시간.
+const COUNT_SECONDS := 0.35
+
 var _round_label: Label
 var _health_label: Label
 var _gold_label: Label
 var _caps_label: Label
+
+var _shown_health := -1
+var _shown_gold := -1
+var _count_tween: Tween
 
 
 func _init() -> void:
@@ -41,11 +48,40 @@ func _init() -> void:
 
 func show_run(run: RunState) -> void:
 	_round_label.text = run.round_status()
-	_health_label.text = str(run.player_hp)
-	_gold_label.text = str(run.gold)
+	_count_to(run.player_hp, run.gold)
 	_caps_label.text = "보유 %d/%d   배치 %d/%d" % [
 		run.owned_count(), run.owned_cap(), run.deployed_count(), run.deploy_cap()
 	]
+
+
+## 처음 표시할 때는 바로 찍고, 이후 변화만 숫자를 세며 올린다.
+func _count_to(health: int, gold: int) -> void:
+	if _shown_health < 0:
+		_shown_health = health
+		_shown_gold = gold
+		_health_label.text = str(health)
+		_gold_label.text = str(gold)
+		return
+	if health == _shown_health and gold == _shown_gold:
+		return
+
+	if _count_tween != null and _count_tween.is_valid():
+		_count_tween.kill()
+	_count_tween = create_tween().set_parallel(true)
+	if health != _shown_health:
+		_count_tween.tween_method(_set_health, _shown_health, health, COUNT_SECONDS)
+	if gold != _shown_gold:
+		_count_tween.tween_method(_set_gold, _shown_gold, gold, COUNT_SECONDS)
+	_shown_health = health
+	_shown_gold = gold
+
+
+func _set_health(value: int) -> void:
+	_health_label.text = str(value)
+
+
+func _set_gold(value: int) -> void:
+	_gold_label.text = str(value)
 
 
 func _stat_row(icon_path: String, label: Label, color: Color) -> Control:

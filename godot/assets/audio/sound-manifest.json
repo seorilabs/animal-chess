@@ -1,0 +1,41 @@
+{
+  "model": "stable-audio-2.5",
+  "out_dir": ".",
+  "tracks": [
+    {
+      "name": "bgm_title",
+      "type": "loop",
+      "duration": 60,
+      "crossfade": 3,
+      "prompt": "gentle pixel art fantasy game title music, soft music box melody, warm woodwind pad, light hand percussion, calm and inviting forest morning mood"
+    },
+    {
+      "name": "bgm_prep",
+      "type": "loop",
+      "duration": 90,
+      "crossfade": 3,
+      "prompt": "cozy strategy game planning music, warm marimba and soft plucked acoustic guitar, gentle woodwind, light shaker, thoughtful and unhurried, leaves room to think"
+    },
+    {
+      "name": "bgm_battle",
+      "type": "loop",
+      "duration": 75,
+      "crossfade": 3,
+      "prompt": "light adventurous battle music for a cute animal tactics game, driving hand drums and tambourine, plucked strings ostinato, bright flute melody, energetic but not aggressive"
+    },
+    {
+      "name": "sting_win",
+      "type": "oneshot",
+      "duration": 4,
+      "prompt": "short cheerful victory fanfare, bright flute and glockenspiel with a warm drum hit, single celebratory ascending phrase, no background music, no background noise",
+      "formats": ["ogg"]
+    },
+    {
+      "name": "sting_lose",
+      "type": "oneshot",
+      "duration": 3,
+      "prompt": "short gentle defeat sting, soft descending woodwind phrase with a low marimba note, sympathetic not harsh, single phrase, no background music, no background noise",
+      "formats": ["ogg"]
+    }
+  ]
+}

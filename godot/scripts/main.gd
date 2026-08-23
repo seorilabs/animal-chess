@@ -52,24 +52,9 @@ var combat_timer: Timer
 
 func _ready() -> void:
 	randomize()
-	_apply_korean_theme()
 	_build_catalog()
 	_build_ui()
 	_new_run()
-
-
-func _apply_korean_theme() -> void:
-	var korean_font := SystemFont.new()
-	korean_font.font_names = PackedStringArray([
-		"Apple SD Gothic Neo",
-		"Noto Sans CJK KR",
-		"Noto Sans KR",
-		"Malgun Gothic",
-		"Arial Unicode MS"
-	])
-	var korean_theme := Theme.new()
-	korean_theme.default_font = korean_font
-	theme = korean_theme
 
 
 func _build_catalog() -> void:
@@ -182,10 +167,10 @@ func _build_ui() -> void:
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	add_child(margin)
 
 	var root := VBoxContainer.new()
@@ -198,7 +183,7 @@ func _build_ui() -> void:
 
 	status_label = Label.new()
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status_label.add_theme_font_size_override("font_size", 14)
+	status_label.add_theme_font_size_override("font_size", 22)
 	header.add_child(status_label)
 
 	var new_button := Button.new()
@@ -207,7 +192,7 @@ func _build_ui() -> void:
 	header.add_child(new_button)
 
 	message_label = Label.new()
-	message_label.add_theme_font_size_override("font_size", 13)
+	message_label.add_theme_font_size_override("font_size", 21)
 	message_label.modulate = Color8(229, 220, 186)
 	root.add_child(message_label)
 
@@ -221,12 +206,12 @@ func _build_ui() -> void:
 	result_panel.add_child(result_box)
 
 	result_title_label = Label.new()
-	result_title_label.add_theme_font_size_override("font_size", 18)
+	result_title_label.add_theme_font_size_override("font_size", 30)
 	result_title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	result_box.add_child(result_title_label)
 
 	result_body_label = Label.new()
-	result_body_label.add_theme_font_size_override("font_size", 13)
+	result_body_label.add_theme_font_size_override("font_size", 21)
 	result_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	result_box.add_child(result_body_label)
 
@@ -240,7 +225,7 @@ func _build_ui() -> void:
 	root.add_child(detail_panel)
 
 	detail_label = Label.new()
-	detail_label.add_theme_font_size_override("font_size", 12)
+	detail_label.add_theme_font_size_override("font_size", 20)
 	detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail_panel.add_child(detail_label)
 
@@ -254,7 +239,7 @@ func _build_ui() -> void:
 	for y in range(BOARD_H):
 		for x in range(BOARD_W):
 			var cell := PanelContainer.new()
-			cell.custom_minimum_size = Vector2(52, 52)
+			cell.custom_minimum_size = Vector2(90, 90)
 			cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			cell.size_flags_vertical = Control.SIZE_EXPAND_FILL
 			cell.gui_input.connect(_on_board_cell_input.bind(x, y))
@@ -285,7 +270,7 @@ func _build_ui() -> void:
 
 	var bench_label := Label.new()
 	bench_label.text = "대기석"
-	bench_label.add_theme_font_size_override("font_size", 14)
+	bench_label.add_theme_font_size_override("font_size", 22)
 	root.add_child(bench_label)
 
 	bench_grid = GridContainer.new()
@@ -296,7 +281,7 @@ func _build_ui() -> void:
 
 	for i in range(BENCH_SIZE):
 		var slot := PanelContainer.new()
-		slot.custom_minimum_size = Vector2(52, 52)
+		slot.custom_minimum_size = Vector2(84, 84)
 		slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		slot.gui_input.connect(_on_bench_input.bind(i))
 		bench_grid.add_child(slot)
@@ -304,7 +289,7 @@ func _build_ui() -> void:
 
 	var shop_label := Label.new()
 	shop_label.text = "상점"
-	shop_label.add_theme_font_size_override("font_size", 14)
+	shop_label.add_theme_font_size_override("font_size", 22)
 	root.add_child(shop_label)
 
 	shop_box = HBoxContainer.new()
@@ -910,7 +895,7 @@ func _refresh_shop() -> void:
 		var base: Dictionary = catalog[id]
 		var button := Button.new()
 		button.text = "%s\n%s/%s\n%d골드" % [base["name"], base["habitat"], base["role"], base["cost"]]
-		button.custom_minimum_size = Vector2(84, 68)
+		button.custom_minimum_size = Vector2(134, 112)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.disabled = combat_running or wrapup_active or gold < int(base["cost"]) or _owned_count() >= _owned_cap()
 		button.pressed.connect(_buy_offer.bind(i))

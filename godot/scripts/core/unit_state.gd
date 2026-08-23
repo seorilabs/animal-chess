@@ -25,6 +25,10 @@ var speed: int
 
 var cooldown: int = 0
 var poison: int = 0
+## 시너지로 붙는 전투 보정값.
+var regen: int = 0
+var poison_power: int = 0
+var chill: int = 0
 var x: int = 0
 var y: int = 0
 
@@ -55,6 +59,9 @@ func reset_stats() -> void:
 	hp = max_hp
 	cooldown = 0
 	poison = 0
+	regen = 0
+	poison_power = 0
+	chill = 0
 
 
 ## 전투 사본. 원본 보드 상태를 건드리지 않고 시뮬레이션하기 위해 쓴다.

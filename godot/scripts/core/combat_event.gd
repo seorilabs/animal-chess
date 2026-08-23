@@ -11,6 +11,7 @@ enum Kind {
 	DAMAGE,    ## target이 amount만큼 피해를 입음
 	POISON,    ## target에게 독이 걸림 (amount = 남은 틱)
 	SLOW,      ## target의 행동이 늦춰짐
+	HEAL,      ## target이 amount만큼 회복
 	DEATH,     ## target이 쓰러짐
 }
 
@@ -45,6 +46,15 @@ static func damage(actor_uid_value: int, target: UnitState, amount_value: int) -
 	var event := CombatEvent.new()
 	event.kind = Kind.DAMAGE
 	event.actor_uid = actor_uid_value
+	event.target_uid = target.uid
+	event.to = target.position()
+	event.amount = amount_value
+	return event
+
+
+static func heal(target: UnitState, amount_value: int) -> CombatEvent:
+	var event := CombatEvent.new()
+	event.kind = Kind.HEAL
 	event.target_uid = target.uid
 	event.to = target.position()
 	event.amount = amount_value

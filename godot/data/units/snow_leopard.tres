@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = "snow_leopard"
+display_name = "눈표범"
+habitat = 3
+role = 3
+cost = 3
+max_hp = 28
+attack = 9
+attack_range = 1
+speed = 4
+skill_name = "눈보라 도약"
+trait_text = "한 번에 적 후열까지 파고드는 고급 교란 기물입니다."

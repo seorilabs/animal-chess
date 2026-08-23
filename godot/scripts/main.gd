@@ -28,7 +28,9 @@ var _wrapup_active := false
 
 var _status_label: Label
 var _message_label: Label
+var _detail_panel: PanelContainer
 var _detail_label: Label
+var _synergy_panel: SynergyPanel
 var _board: BoardView
 var _bench_row: HBoxContainer
 var _shop_row: HBoxContainer
@@ -90,6 +92,9 @@ func _build_ui() -> void:
 	_message_label.modulate = Color8(229, 220, 186)
 	root.add_child(_message_label)
 
+	_synergy_panel = SynergyPanel.new()
+	root.add_child(_synergy_panel)
+
 	root.add_child(_build_detail_panel())
 
 	_board = BoardView.new()
@@ -138,12 +143,13 @@ func _build_header() -> Control:
 
 
 func _build_detail_panel() -> Control:
-	var panel := PanelContainer.new()
+	_detail_panel = PanelContainer.new()
+	_detail_panel.visible = false
 	_detail_label = Label.new()
 	_detail_label.add_theme_font_size_override("font_size", 20)
 	_detail_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	panel.add_child(_detail_label)
-	return panel
+	_detail_panel.add_child(_detail_label)
+	return _detail_panel
 
 
 func _build_controls() -> Control:
@@ -434,6 +440,7 @@ func _on_wrapup_continue() -> void:
 
 func _refresh_all() -> void:
 	_refresh_status()
+	_refresh_synergy()
 	_refresh_detail()
 	_refresh_board()
 	_refresh_bench()
@@ -451,8 +458,8 @@ func _refresh_status() -> void:
 
 func _refresh_detail() -> void:
 	var unit := selected_unit()
+	_detail_panel.visible = unit != null
 	if unit == null:
-		_detail_label.text = "선택 정보\n없음"
 		return
 	_detail_label.text = "%s  ★%d\n%s / %s  비용 %d\n체력 %d  공격 %d  사거리 %d  속도 %d\n기술: %s\n특성: %s" % [
 		unit.def.display_name, unit.star,
@@ -460,6 +467,13 @@ func _refresh_detail() -> void:
 		unit.max_hp, unit.attack, unit.attack_range, unit.speed,
 		unit.def.skill_name, unit.def.trait_text,
 	]
+
+
+func _refresh_synergy() -> void:
+	if _combat_running:
+		_synergy_panel.show_for(Synergy.members_of(sim.units, UnitState.Team.PLAYER))
+		return
+	_synergy_panel.show_for(run.deployed_units())
 
 
 func _refresh_board() -> void:

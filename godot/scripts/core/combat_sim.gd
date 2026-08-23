@@ -14,6 +14,10 @@ const TIMEOUT_MARGIN := 0.05
 
 const POISON_DAMAGE := 1
 const BEAR_SPLASH_RADIUS := 1
+## 개구리 독의 기본 지속 틱. 시너지의 poison_power가 여기에 더해진다.
+const POISON_BASE_TICKS := 3
+## 숲 시너지 회복이 발동하는 주기(틱).
+const REGEN_INTERVAL := 5
 
 var units: Array[UnitState] = []
 var tick_count: int = 0
@@ -55,6 +59,7 @@ func tick() -> Array[CombatEvent]:
 
 	tick_count += 1
 	_tick_poison(events)
+	_tick_regen(events)
 
 	for unit in units:
 		if not unit.is_alive():
@@ -112,6 +117,17 @@ func _tick_poison(events: Array[CombatEvent]) -> void:
 		_deal_damage(0, unit, POISON_DAMAGE, events)
 
 
+func _tick_regen(events: Array[CombatEvent]) -> void:
+	if tick_count % REGEN_INTERVAL != 0:
+		return
+	for unit in units:
+		if not unit.is_alive() or unit.regen <= 0 or unit.hp >= unit.max_hp:
+			continue
+		var healed := mini(unit.regen, unit.max_hp - unit.hp)
+		unit.hp += healed
+		events.append(CombatEvent.heal(unit, healed))
+
+
 func _choose_target(unit: UnitState) -> UnitState:
 	var best: UnitState = null
 	var best_score := 0
@@ -132,9 +148,14 @@ func _attack(attacker: UnitState, target: UnitState, events: Array[CombatEvent])
 	events.append(CombatEvent.attack(attacker, target))
 	_deal_damage(attacker.uid, target, attacker.attack, events)
 
+	# 극지 시너지는 기물 종류와 무관하게 공격에 감속을 얹는다.
+	if attacker.chill > 0 and target.is_alive():
+		target.cooldown += attacker.chill
+		events.append(CombatEvent.status(CombatEvent.Kind.SLOW, target, attacker.chill))
+
 	match attacker.def.id:
 		"frog":
-			target.poison = maxi(target.poison, 3)
+			target.poison = maxi(target.poison, POISON_BASE_TICKS + attacker.poison_power)
 			events.append(CombatEvent.status(CombatEvent.Kind.POISON, target, target.poison))
 		"penguin":
 			target.cooldown += 1

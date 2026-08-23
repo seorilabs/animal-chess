@@ -8,9 +8,12 @@ const TICK_BUDGET := CombatSim.MAX_TICKS + 5
 
 
 func run(host: Node) -> void:
-	var main: Control = load("res://scenes/main.tscn").instantiate()
-	host.add_child(main)
+	var router: Control = load("res://scenes/main.tscn").instantiate()
+	host.add_child(router)
 	await host.get_tree().process_frame
+	router.show_game(false)
+	await host.get_tree().process_frame
+	var main: GameScreen = router.game
 	main.new_run(RUN_SEED)
 
 	check_eq(main.run.owned_cap(), 4, "1라운드 보유 한도")
@@ -40,4 +43,4 @@ func run(host: Node) -> void:
 	print("  라운드=%d 체력=%d 골드=%d" % [
 		main.run.round_number, main.run.player_hp, main.run.gold
 	])
-	main.queue_free()
+	router.queue_free()

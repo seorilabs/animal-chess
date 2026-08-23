@@ -108,7 +108,7 @@ func _play_run(catalog: UnitCatalog, seed_value: int) -> Dictionary:
 
 ## 화면이 쓰는 전투 템포. 시뮬레이션 시간 환산에 쓴다.
 func _tick_seconds() -> float:
-	return load("res://scripts/main.gd").COMBAT_TICK_SECONDS
+	return GameScreen.COMBAT_TICK_SECONDS
 
 
 ## 살 수 있으면 사고, 배치 한도까지 채우는 단순 전략.

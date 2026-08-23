@@ -26,12 +26,12 @@ func _ready() -> void:
 	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	add_child(viewport)
 
-	var main: Control = load("res://scenes/main.tscn").instantiate()
-	viewport.add_child(main)
+	var router: Control = load("res://scenes/main.tscn").instantiate()
+	viewport.add_child(router)
 
 	for _i in range(WARMUP_FRAMES):
 		await get_tree().process_frame
-	_apply_scenario(main)
+	_apply_scenario(router)
 	for _i in range(WARMUP_FRAMES):
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
@@ -53,9 +53,13 @@ func _shot_name() -> String:
 
 
 ## 장면별 상태를 만든다. combat / preview / wrapup / prep(기본).
-func _apply_scenario(main: Control) -> void:
-	main.new_run(SHOT_SEED)
+func _apply_scenario(router: Control) -> void:
 	var scenario := _arg("--scenario", "prep")
+	if scenario == "title":
+		return
+	router.show_game(false)
+	var main: GameScreen = router.game
+	main.new_run(SHOT_SEED)
 	main.run.round_number = 4
 	main.run.gold = 22
 	main.run.prepare_round()
@@ -70,7 +74,9 @@ func _apply_scenario(main: Control) -> void:
 			for unit_def in main.catalog.defs().slice(0, 7):
 				main.profile.unlock(unit_def.id)
 			main.profile.record_round(12)
-			main._on_codex()
+			router._open_codex()
+		"settings":
+			router._open_settings()
 		"preview":
 			main._on_preview()
 		"combat":
@@ -84,7 +90,7 @@ func _apply_scenario(main: Control) -> void:
 
 
 ## 대기석이 비어 있으면 화면이 실제보다 휑하게 보인다.
-func _fill_bench(main: Control) -> void:
+func _fill_bench(main: GameScreen) -> void:
 	for index in range(3):
 		var id: String = ["owl", "fox", "penguin"][index]
 		main.run.bench[index] = UnitState.create(
@@ -92,7 +98,7 @@ func _fill_bench(main: Control) -> void:
 		)
 
 
-func _place_sample_board(main: Control) -> void:
+func _place_sample_board(main: GameScreen) -> void:
 	var placements := {
 		Vector2i(2, 4): "turtle",
 		Vector2i(3, 4): "bear",

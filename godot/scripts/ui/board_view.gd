@@ -6,6 +6,7 @@ class_name BoardView
 extends Control
 
 signal cell_pressed(cell: Vector2i)
+signal unit_dropped(payload: Dictionary, cell: Vector2i)
 
 ## 처치와 스킬에 쓰는 파티클 종류. BurstEffect.Kind를 그대로 노출한다.
 const BurstKind := BurstEffect.Kind
@@ -20,6 +21,8 @@ const COLOR_ENEMY_DARK := Color8(48, 39, 44)
 const COLOR_GRID := Color8(24, 36, 30)
 const COLOR_PLAYER_EDGE := Color8(79, 142, 92)
 const COLOR_SELECTED := Color8(244, 211, 94)
+## 드래그하는 동안 놓을 수 있는 칸에 덧씌우는 색.
+const COLOR_DROP_HINT := Color8(120, 200, 140, 40)
 
 @export var board_size := Vector2i(8, 8)
 @export var player_min_row := 4
@@ -28,6 +31,7 @@ var interactive := true
 var selected_cell := Vector2i(-1, -1)
 
 var _views: Dictionary = {}
+var _drag_active := false
 var _shake := Vector2.ZERO
 var _shake_amount := 0.0
 var _shake_phase := 0.0
@@ -51,6 +55,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_process_drag_state()
 	if _shake_amount <= 0.01:
 		if _shake != Vector2.ZERO:
 			_shake = Vector2.ZERO
@@ -71,9 +76,15 @@ func shake(amount: float) -> void:
 
 
 func _notification(what: int) -> void:
+	if what != NOTIFICATION_RESIZED:
+		return
 	# 보드는 항상 정사각형을 유지한다.
-	if what == NOTIFICATION_RESIZED and not is_equal_approx(custom_minimum_size.y, size.x):
+	if not is_equal_approx(custom_minimum_size.y, size.x):
 		custom_minimum_size.y = size.x
+	# 칸 크기가 바뀌었으므로 올려둔 기물 자리도 다시 잡는다.
+	# 이걸 빼면 화면이 처음 배치되기 전에 sync된 기물이 크기 0으로 남는다.
+	layout_units()
+	queue_redraw()
 
 
 func cell_size() -> Vector2:
@@ -130,6 +141,15 @@ func _fade_out(view: UnitView) -> void:
 	tween.tween_property(view, "modulate:a", 0.0, DEATH_FADE)
 	tween.tween_property(view, "scale", Vector2(0.7, 0.7), DEATH_FADE)
 	tween.chain().tween_callback(view.queue_free)
+
+
+## 그 칸에 서 있는 기물. 없으면 null.
+func unit_at(cell: Vector2i) -> UnitState:
+	for uid in _views:
+		var view: UnitView = _views[uid]
+		if view.unit != null and view.unit.position() == cell:
+			return view.unit
+	return null
 
 
 func view_for_uid(uid: int) -> UnitView:
@@ -206,6 +226,14 @@ func _draw() -> void:
 		var edge_y := player_min_row * unit_size.y
 		draw_line(Vector2(0, edge_y), Vector2(size.x, edge_y), COLOR_PLAYER_EDGE, 2.0)
 
+	if _drag_active:
+		# 놓을 수 있는 절반을 덧칠해 어디로 끌어야 하는지 보이게 한다.
+		var drop_area := Rect2(
+			Vector2(0, player_min_row * unit_size.y),
+			Vector2(size.x, (board_size.y - player_min_row) * unit_size.y)
+		)
+		draw_rect(drop_area, COLOR_DROP_HINT)
+
 	if selected_cell.x >= 0:
 		draw_rect(cell_rect(selected_cell), COLOR_SELECTED, false, 3.0)
 
@@ -218,7 +246,7 @@ func _cell_color(x: int, y: int) -> Color:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if not interactive or not _is_primary_press(event):
+	if not interactive or not is_primary_press(event):
 		return
 	var cell := cell_at(event.position)
 	if cell.x >= 0:
@@ -226,7 +254,51 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 
 
-static func _is_primary_press(event: InputEvent) -> bool:
+func _get_drag_data(at_position: Vector2) -> Variant:
+	if not interactive:
+		return null
+	var cell := cell_at(at_position)
+	if cell.x < 0 or unit_at(cell) == null:
+		return null
+	set_drag_preview(_drag_preview(unit_at(cell)))
+	_set_drag_active(true)
+	return {"source": "board", "cell": cell}
+
+
+func _can_drop_data(at_position: Vector2, data: Variant) -> bool:
+	if not interactive or not data is Dictionary or not data.has("source"):
+		return false
+	var cell := cell_at(at_position)
+	return cell.x >= 0 and cell.y >= player_min_row
+
+
+func _drop_data(at_position: Vector2, data: Variant) -> void:
+	unit_dropped.emit(data, cell_at(at_position))
+
+
+func _process_drag_state() -> void:
+	var dragging := get_viewport().gui_is_dragging()
+	if dragging != _drag_active:
+		_set_drag_active(dragging)
+
+
+func _set_drag_active(value: bool) -> void:
+	_drag_active = value
+	queue_redraw()
+
+
+func _drag_preview(unit: UnitState) -> Control:
+	var holder := Control.new()
+	var view := UnitView.new()
+	view.set_unit(unit)
+	view.idle_bob = false
+	view.size = cell_size()
+	view.position = -cell_size() * 0.5
+	holder.add_child(view)
+	return holder
+
+
+static func is_primary_press(event: InputEvent) -> bool:
 	if event is InputEventMouseButton:
 		return event.pressed and event.button_index == MOUSE_BUTTON_LEFT
 	if event is InputEventScreenTouch:

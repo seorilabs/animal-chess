@@ -1,0 +1,123 @@
+{
+  "style": "style/style-guide.md",
+  "anchor": {
+    "path": "style/anchor.png",
+    "prompt": "a cute chibi turtle warrior mascot standing upright on two short legs like a little person, facing the viewer straight on, oversized round head much larger than the body, a wide dark teal domed shell on its back visible behind the shoulders, small stubby arms at its sides, big square yellow eyes, a tiny green leaf sprig tucked beside its cheek"
+  },
+  "model": "gemini-3-pro-image",
+  "out_dir": ".",
+  "assets": [
+    {
+      "name": "unit_turtle",
+      "prompt": "a cute chibi turtle warrior mascot standing upright on two short legs like a little person, facing the viewer straight on, oversized round head, a wide dark teal domed shell on its back visible behind the shoulders, small stubby arms, big round yellow eyes, a small green leaf sprig beside its cheek, chunky rounded body filling the frame, same fine pixel detail level and shading richness as a polished sprite sheet",
+      "size": 96
+    },
+    {
+      "name": "unit_rabbit",
+      "prompt": "a cute chibi rabbit mascot standing upright facing the viewer, plump rounded stout body filling the frame, oversized round head, very tall upright ears with soft pink inner lining, cream white fur with warm beige shading, big dark eyes, holding a small orange carrot in one stubby paw",
+      "size": 96
+    },
+    {
+      "name": "unit_sparrow",
+      "prompt": "a cute chibi sparrow mascot standing upright facing the viewer, oversized round head, warm brown body with a pale cream belly, a slate blue cap across the top of its head, wings spread wide to either side making the silhouette much broader than the body, a short pointed orange beak, thin orange feet",
+      "size": 96
+    },
+    {
+      "name": "unit_frog",
+      "prompt": "a cute chibi frog mascot standing upright facing the viewer, very wide squat body, huge round bulging eyes set high on the head, deep green skin with a bright yellow-green belly, a small purple poison bubble floating beside its shoulder, wide flat webbed feet",
+      "size": 96
+    },
+    {
+      "name": "unit_fox",
+      "prompt": "a cute chibi fox mascot standing upright facing the viewer, oversized round head with large pointed ears, bright orange fur with a cream white muzzle and chest, dark brown paws, one very large bushy tail with a white tip curling up beside the body as the biggest part of the silhouette, narrow sly eyes",
+      "size": 96
+    },
+    {
+      "name": "unit_wolf",
+      "prompt": "a cute chibi wolf mascot standing upright facing the viewer, oversized head with a long forward-pointing muzzle, cool grey fur with a pale silver chest and darker grey back, broad heavy shoulders wider than the hips, pointed ears, sharp pale yellow eyes",
+      "size": 96
+    },
+    {
+      "name": "unit_penguin",
+      "prompt": "a cute chibi penguin mascot standing upright facing the viewer, rounded body with strong black and white contrast, black back and head, crisp white oval belly, small orange beak and orange flat feet, a pale cyan ice crystal shard floating beside its shoulder",
+      "size": 96
+    },
+    {
+      "name": "unit_owl",
+      "prompt": "a cute chibi owl mascot standing upright facing the viewer, very round body, enormous round golden eyes taking up most of the face, two small feather tufts on top of the head, mottled warm brown and cream feathers, small hooked beak, wings folded close to the body",
+      "size": 96
+    },
+    {
+      "name": "unit_bear",
+      "prompt": "a cute chibi bear mascot standing upright facing the viewer, massive broad upper body and small legs, small round ears on top of the head, dark chocolate brown fur with a lighter tan muzzle and belly patch, one heavy raised front paw showing pale claws, small dark eyes",
+      "size": 96
+    },
+    {
+      "name": "unit_snow_leopard",
+      "prompt": "a cute chibi snow leopard mascot standing upright on two hind legs like a little person, facing the viewer straight on, oversized round head with thick cheeks, pale grey and white fur with dark rosette spots, small rounded ears, pale cyan eyes, one long thick spotted tail curling up behind the body, plump body filling the frame",
+      "size": 96
+    },
+    {
+      "name": "icon_gold",
+      "prompt": "a single thick gold coin seen face on, with a small five pointed star stamped in the center, warm gold with a darker gold rim",
+      "size": 64
+    },
+    {
+      "name": "icon_health",
+      "prompt": "a plump rounded heart symbol in warm red with a lighter red highlight in the upper left corner",
+      "size": 64
+    },
+    {
+      "name": "icon_star",
+      "prompt": "a chunky five pointed star in bright warm gold with a paler gold highlight on the upper left points",
+      "size": 64
+    },
+    {
+      "name": "icon_mana",
+      "prompt": "a rounded teardrop shaped mana droplet in bright cyan blue with a white highlight near the top",
+      "size": 64
+    },
+    {
+      "name": "icon_habitat_forest",
+      "prompt": "a small round emblem of two overlapping broad green leaves on a short brown stem",
+      "size": 64
+    },
+    {
+      "name": "icon_habitat_grassland",
+      "prompt": "a small round emblem of three tall golden grass blades bending in the wind",
+      "size": 64
+    },
+    {
+      "name": "icon_habitat_swamp",
+      "prompt": "a small round emblem of a dark teal water droplet with two smaller bubbles rising beside it",
+      "size": 64
+    },
+    {
+      "name": "icon_habitat_polar",
+      "prompt": "a small round emblem of a six pointed pale cyan ice crystal",
+      "size": 64
+    },
+    {
+      "name": "icon_habitat_sky",
+      "prompt": "a small round emblem of a single curved feather in soft blue with a pale cream quill",
+      "size": 64
+    },
+    {
+      "name": "bg_title",
+      "size": 2048,
+      "transparent": false,
+      "aspect_ratio": "9:16",
+      "prompt": "a pixel art game title background of a misty forest clearing at dawn seen from a low angle, layered dark green tree silhouettes receding into pale teal mist, a soft warm gold sky glow near the horizon, scattered floating pollen motes, no characters, no text, empty space in the upper third"
+    },
+    {
+      "name": "app_icon",
+      "size": 1024,
+      "transparent": false,
+      "aspect_ratio": "1:1",
+      "prompt": "a game app icon showing the chibi turtle warrior character from the reference centered on a solid deep forest green background with a subtle darker green vignette, the character fills most of the frame, no text, no border, no frame",
+      "refs": [
+        "raw/unit_turtle.png"
+      ]
+    }
+  ]
+}

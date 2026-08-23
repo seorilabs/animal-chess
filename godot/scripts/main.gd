@@ -27,7 +27,7 @@ var _selected_cell := Vector2i(-1, -1)
 var _combat_running := false
 var _wrapup_active := false
 
-var _status_label: Label
+var _hud: Hud
 var _message_label: Label
 var _detail_panel: PanelContainer
 var _detail_label: Label
@@ -158,10 +158,9 @@ func _build_header() -> Control:
 	var header := HBoxContainer.new()
 	header.add_theme_constant_override("separation", 10)
 
-	_status_label = Label.new()
-	_status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status_label.add_theme_font_size_override("font_size", 24)
-	header.add_child(_status_label)
+	_hud = Hud.new()
+	_hud.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(_hud)
 
 	var codex_button := Button.new()
 	codex_button.text = "도감"
@@ -553,11 +552,7 @@ func _sync_profile() -> void:
 
 
 func _refresh_status() -> void:
-	_status_label.text = "%s  체력 %d  골드 %d\n보유 %d/%d  배치 %d/%d" % [
-		run.round_status(), run.player_hp, run.gold,
-		run.owned_count(), run.owned_cap(),
-		run.deployed_count(), run.deploy_cap(),
-	]
+	_hud.show_run(run)
 
 
 func _refresh_detail() -> void:
@@ -621,17 +616,11 @@ func _refresh_shop() -> void:
 
 	for index in range(run.shop_offers.size()):
 		var unit_def := catalog.get_def(run.shop_offers[index])
-		var button := Button.new()
-		button.text = "%s\n%s/%s\n%d골드" % [
-			unit_def.display_name, unit_def.habitat_label(), unit_def.role_label(), unit_def.cost
-		]
-		button.add_theme_font_size_override("font_size", 20)
-		button.custom_minimum_size = Vector2(0, 116)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.disabled = not _is_prep() or run.gold < unit_def.cost \
+		var card := ShopCard.new(unit_def)
+		card.disabled = not _is_prep() or run.gold < unit_def.cost \
 			or run.owned_count() >= run.owned_cap()
-		button.pressed.connect(_on_buy.bind(index))
-		_shop_row.add_child(button)
+		card.pressed.connect(_on_buy.bind(index))
+		_shop_row.add_child(card)
 
 
 func _refresh_buttons() -> void:

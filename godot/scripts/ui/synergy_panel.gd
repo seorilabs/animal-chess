@@ -12,6 +12,14 @@ const COLOR_IDLE_BORDER := Color8(58, 76, 63)
 const COLOR_ACTIVE_TEXT := Color8(226, 245, 224)
 const COLOR_IDLE_TEXT := Color8(132, 152, 136)
 
+const HABITAT_ICON_NAMES := {
+	UnitDef.Habitat.FOREST: "forest",
+	UnitDef.Habitat.GRASSLAND: "grassland",
+	UnitDef.Habitat.SWAMP: "swamp",
+	UnitDef.Habitat.POLAR: "polar",
+	UnitDef.Habitat.SKY: "sky",
+}
+
 var _chips: HBoxContainer
 var _description: Label
 
@@ -61,17 +69,43 @@ func _build_chip(active: Synergy.Active) -> Control:
 	var chip := PanelContainer.new()
 	chip.add_theme_stylebox_override("panel", _chip_style(active.is_active()))
 
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	chip.add_child(row)
+
+	var icon := _habitat_icon(active)
+	if icon != null:
+		row.add_child(icon)
+
 	var label := Label.new()
 	label.text = "%s %d" % [active.label, active.count]
 	label.add_theme_font_size_override("font_size", 19)
 	label.add_theme_color_override(
 		"font_color", COLOR_ACTIVE_TEXT if active.is_active() else COLOR_IDLE_TEXT
 	)
-	chip.add_child(label)
+	row.add_child(label)
 
 	if active.next_required > 0:
 		chip.tooltip_text = "%s 다음 단계까지 %d마리" % [active.label, active.next_required]
 	return chip
+
+
+## 서식지 축 칩에만 아이콘을 붙인다. 역할 축은 이름만으로 충분히 읽힌다.
+func _habitat_icon(active: Synergy.Active) -> TextureRect:
+	if active.axis != Synergy.Axis.HABITAT:
+		return null
+	var path := "res://assets/art/icon_habitat_%s.png" % HABITAT_ICON_NAMES.get(active.key, "")
+	if not ResourceLoader.exists(path):
+		return null
+
+	var icon := TextureRect.new()
+	icon.texture = load(path)
+	icon.custom_minimum_size = Vector2(22, 22)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if not active.is_active():
+		icon.modulate = Color(1, 1, 1, 0.45)
+	return icon
 
 
 func _chip_style(active: bool) -> StyleBoxFlat:

@@ -56,13 +56,14 @@ func _shot_name() -> String:
 func _apply_scenario(main: Control) -> void:
 	main.new_run(SHOT_SEED)
 	var scenario := _arg("--scenario", "prep")
-	if scenario == "prep":
-		return
-
 	main.run.round_number = 4
+	main.run.gold = 22
 	main.run.prepare_round()
 	_place_sample_board(main)
+	_fill_bench(main)
 	main._refresh_all()
+	if scenario == "prep":
+		return
 
 	match scenario:
 		"codex":
@@ -80,6 +81,15 @@ func _apply_scenario(main: Control) -> void:
 			main._start_combat()
 			while main.sim.is_running():
 				main._on_combat_tick()
+
+
+## 대기석이 비어 있으면 화면이 실제보다 휑하게 보인다.
+func _fill_bench(main: Control) -> void:
+	for index in range(3):
+		var id: String = ["owl", "fox", "penguin"][index]
+		main.run.bench[index] = UnitState.create(
+			main.catalog.get_def(id), UnitState.Team.PLAYER
+		)
 
 
 func _place_sample_board(main: Control) -> void:

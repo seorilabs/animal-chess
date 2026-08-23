@@ -1,16 +1,29 @@
 ## 보드와 대기석에 올라가는 기물 한 마리의 표시.
 ##
-## 그림은 아직 절차적 드로잉이다. 실제 스프라이트로 교체할 때 _draw_animal 계열만 바뀐다.
+## 스프라이트는 정적 이미지 한 장이고 움직임은 전부 코드에서 만든다.
 ## 애니메이션 상태는 데이터가 아니라 이 뷰가 들고 있으며 CombatEvent가 촉발한다.
 class_name UnitView
 extends Control
 
 enum Motion { NONE, ATTACK, HIT, STEP }
 
+## 그리기 좌표계. 실제 크기와 무관하게 이 격자 위에서 계산한다.
 const CANVAS := 48.0
 const ATTACK_MS := 300
 const HIT_MS := 260
 const STEP_MS := 280
+
+const SPRITE_DIR := "res://assets/art"
+const STAR_TEXTURE_PATH := "res://assets/art/icon_star.png"
+
+## 스프라이트가 차지하는 영역. 위는 체력/마나 바, 아래는 팀 링 자리로 비운다.
+const SPRITE_RECT := Rect2(3, 9, 42, 33)
+## 체력/마나 바의 가로 위치와 너비.
+const BAR_X := 10.0
+const BAR_W := 28.0
+
+static var _sprite_cache: Dictionary = {}
+static var _star_texture: Texture2D = null
 
 var unit: UnitState = null
 var selected := false
@@ -20,6 +33,23 @@ var _motion_direction := Vector2.ZERO
 var _motion_start_ms := 0
 var _motion_duration_ms := 1
 var _draw_offset := Vector2.ZERO
+
+
+static func sprite_for(id: String) -> Texture2D:
+	if _sprite_cache.has(id):
+		return _sprite_cache[id]
+	var path := "%s/unit_%s.png" % [SPRITE_DIR, id]
+	var texture: Texture2D = load(path) if ResourceLoader.exists(path) else null
+	if texture == null:
+		push_error("기물 스프라이트를 찾을 수 없습니다: %s" % path)
+	_sprite_cache[id] = texture
+	return texture
+
+
+static func star_texture() -> Texture2D:
+	if _star_texture == null and ResourceLoader.exists(STAR_TEXTURE_PATH):
+		_star_texture = load(STAR_TEXTURE_PATH)
+	return _star_texture
 
 
 func set_unit(value: UnitState) -> void:
@@ -42,18 +72,6 @@ func play(motion: Motion, direction: Vector2i) -> void:
 	queue_redraw()
 
 
-func _duration_for(motion: Motion) -> int:
-	match motion:
-		Motion.ATTACK:
-			return ATTACK_MS
-		Motion.HIT:
-			return HIT_MS
-		Motion.STEP:
-			return STEP_MS
-		_:
-			return 1
-
-
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -73,9 +91,8 @@ func _draw() -> void:
 	_draw_offset = _current_offset()
 
 	_draw_shadow()
+	_draw_sprite()
 	_draw_team_ring()
-	_draw_animal(unit.def.id)
-	_draw_attack_effect(unit.def.id)
 	_draw_hp_bar()
 	_draw_mana_bar()
 	_draw_stars()
@@ -93,9 +110,14 @@ func _origin() -> Vector2:
 	return (size - Vector2(CANVAS, CANVAS) * _scale()) * 0.5
 
 
-func _px(x: int, y: int, w: int, h: int, color: Color) -> void:
+## 48 격자 좌표를 실제 화면 사각형으로 옮긴다.
+func _rect(x: float, y: float, w: float, h: float) -> Rect2:
 	var scale := _scale()
-	draw_rect(Rect2(_origin() + (Vector2(x, y) + _draw_offset) * scale, Vector2(w, h) * scale), color)
+	return Rect2(_origin() + (Vector2(x, y) + _draw_offset) * scale, Vector2(w, h) * scale)
+
+
+func _px(x: int, y: int, w: int, h: int, color: Color) -> void:
+	draw_rect(_rect(x, y, w, h), color)
 
 
 func _progress() -> float:
@@ -103,6 +125,18 @@ func _progress() -> float:
 		return 1.0
 	var elapsed := Time.get_ticks_msec() - _motion_start_ms
 	return clampf(float(elapsed) / float(maxi(1, _motion_duration_ms)), 0.0, 1.0)
+
+
+func _duration_for(motion: Motion) -> int:
+	match motion:
+		Motion.ATTACK:
+			return ATTACK_MS
+		Motion.HIT:
+			return HIT_MS
+		Motion.STEP:
+			return STEP_MS
+		_:
+			return 1
 
 
 func _current_offset() -> Vector2:
@@ -124,38 +158,24 @@ func _current_offset() -> Vector2:
 			return Vector2.ZERO
 
 
-func _effect_color(id: String) -> Color:
-	match id:
-		"frog":
-			return Color8(163, 85, 207)
-		"penguin":
-			return Color8(124, 214, 232)
-		"sparrow":
-			return Color8(239, 184, 92)
-		"bear":
-			return Color8(245, 214, 136)
-		_:
-			return Color8(255, 237, 174)
-
-
-func _draw_attack_effect(id: String) -> void:
-	if _motion != Motion.ATTACK:
+func _draw_sprite() -> void:
+	var texture := sprite_for(unit.def.id)
+	if texture == null:
 		return
-	var progress := _progress()
-	if progress >= 1.0:
-		return
-
-	var direction := _motion_direction
-	var color := _effect_color(id)
-	var pulse := int(round(sin(progress * PI) * 5.0))
-	if absf(direction.x) >= absf(direction.y):
-		var x := 30 if direction.x >= 0.0 else 8 - pulse
-		_px(x, 21, 9 + pulse, 2, color)
-		_px(x + 2, 25, 7 + pulse, 2, color)
-	else:
-		var y := 30 if direction.y >= 0.0 else 9 - pulse
-		_px(22, y, 2, 9 + pulse, color)
-		_px(26, y + 2, 2, 7 + pulse, color)
+	# 공격할 때 살짝 눌러 앞으로 뻗는 느낌을 준다.
+	var squash := 0.0
+	if _motion == Motion.ATTACK:
+		squash = sin(_progress() * PI) * 2.0
+	draw_texture_rect(
+		texture,
+		_rect(
+			SPRITE_RECT.position.x - squash * 0.5,
+			SPRITE_RECT.position.y + squash,
+			SPRITE_RECT.size.x + squash,
+			SPRITE_RECT.size.y - squash
+		),
+		false
+	)
 
 
 func _draw_hit_flash() -> void:
@@ -164,159 +184,52 @@ func _draw_hit_flash() -> void:
 	var progress := _progress()
 	if progress >= 1.0:
 		return
-	var scale := _scale()
-	var alpha := int(round(120.0 * (1.0 - progress)))
-	draw_rect(
-		Rect2(_origin() + (Vector2(10, 12) + _draw_offset) * scale, Vector2(28, 25) * scale),
-		Color8(255, 245, 215, alpha)
+	var texture := sprite_for(unit.def.id)
+	if texture == null:
+		return
+	# 스프라이트 실루엣만 하얗게 번쩍이게 한다.
+	draw_texture_rect(
+		texture,
+		_rect(SPRITE_RECT.position.x, SPRITE_RECT.position.y, SPRITE_RECT.size.x, SPRITE_RECT.size.y),
+		false,
+		Color(1.0, 1.0, 1.0, 0.75 * (1.0 - progress))
 	)
 
 
 func _draw_shadow() -> void:
-	_px(11, 38, 26, 5, Color8(0, 0, 0, 80))
+	_px(14, 41, 20, 3, Color8(0, 0, 0, 90))
 
 
 func _draw_team_ring() -> void:
 	var color := Color8(83, 164, 255) if unit.team == UnitState.Team.PLAYER else Color8(239, 91, 91)
-	_px(8, 39, 32, 2, color)
+	_px(11, 44, 26, 2, color)
 
 
 func _draw_hp_bar() -> void:
-	_px(8, 2, 32, 4, Color8(35, 38, 40))
+	draw_rect(_rect(BAR_X, 2.0, BAR_W, 3.0), Color8(16, 20, 18, 220))
 	var ratio := clampf(float(unit.hp) / float(maxi(1, unit.max_hp)), 0.0, 1.0)
-	_px(9, 3, int(round(30.0 * ratio)), 2, Color8(88, 214, 116))
+	draw_rect(_rect(BAR_X + 0.5, 2.5, (BAR_W - 1.0) * ratio, 2.0), Color8(88, 214, 116))
 	if unit.shield > 0:
 		var shield_ratio := clampf(float(unit.shield) / float(maxi(1, unit.max_hp)), 0.0, 1.0)
-		_px(9, 3, int(round(30.0 * shield_ratio)), 2, Color8(214, 226, 240))
+		draw_rect(
+			_rect(BAR_X + 0.5, 2.5, (BAR_W - 1.0) * shield_ratio, 2.0), Color8(214, 226, 240)
+		)
 
 
 func _draw_mana_bar() -> void:
 	if unit.max_mana <= 0:
 		return
-	_px(8, 7, 32, 3, Color8(28, 34, 44))
+	draw_rect(_rect(BAR_X, 5.5, BAR_W, 2.0), Color8(14, 18, 26, 220))
 	var ratio := clampf(float(unit.mana) / float(unit.max_mana), 0.0, 1.0)
 	var color := Color8(244, 224, 120) if unit.is_skill_ready() else Color8(110, 200, 232)
-	_px(9, 8, int(round(30.0 * ratio)), 1, color)
+	draw_rect(_rect(BAR_X + 0.5, 5.9, (BAR_W - 1.0) * ratio, 1.2), color)
 
 
 func _draw_stars() -> void:
-	for i in range(unit.star):
-		_px(36 - i * 5, 11, 3, 3, Color8(244, 211, 94))
-
-
-func _draw_animal(id: String) -> void:
-	match id:
-		"rabbit":
-			_draw_rabbit()
-		"sparrow":
-			_draw_sparrow()
-		"frog":
-			_draw_frog()
-		"fox":
-			_draw_fox()
-		"wolf":
-			_draw_wolf()
-		"penguin":
-			_draw_penguin()
-		"bear":
-			_draw_bear()
-		_:
-			_draw_turtle()
-
-
-func _draw_eye(x: int, y: int) -> void:
-	_px(x, y, 3, 3, Color8(27, 29, 29))
-	_px(x + 1, y, 1, 1, Color8(255, 255, 255))
-
-
-func _draw_turtle() -> void:
-	_px(13, 24, 22, 11, Color8(29, 99, 78))
-	_px(16, 17, 16, 14, Color8(46, 137, 92))
-	_px(19, 20, 10, 8, Color8(93, 157, 89))
-	_px(33, 24, 7, 7, Color8(75, 151, 95))
-	_px(9, 28, 5, 5, Color8(75, 151, 95))
-	_px(14, 34, 5, 3, Color8(47, 90, 69))
-	_px(29, 34, 5, 3, Color8(47, 90, 69))
-	_draw_eye(35, 25)
-
-
-func _draw_rabbit() -> void:
-	_px(17, 11, 5, 15, Color8(237, 221, 186))
-	_px(27, 11, 5, 15, Color8(237, 221, 186))
-	_px(19, 13, 2, 10, Color8(233, 156, 163))
-	_px(28, 13, 2, 10, Color8(233, 156, 163))
-	_px(15, 24, 20, 13, Color8(237, 221, 186))
-	_px(18, 20, 14, 10, Color8(247, 235, 209))
-	_px(11, 31, 7, 5, Color8(247, 235, 209))
-	_px(32, 31, 6, 5, Color8(237, 221, 186))
-	_draw_eye(21, 23)
-	_draw_eye(29, 23)
-
-
-func _draw_sparrow() -> void:
-	_px(9, 23, 15, 10, Color8(132, 90, 57))
-	_px(24, 20, 14, 13, Color8(170, 119, 75))
-	_px(14, 15, 18, 7, Color8(92, 151, 185))
-	_px(32, 23, 7, 4, Color8(239, 171, 73))
-	_px(12, 33, 4, 4, Color8(75, 50, 40))
-	_px(25, 33, 4, 4, Color8(75, 50, 40))
-	_draw_eye(29, 22)
-
-
-func _draw_frog() -> void:
-	_px(13, 21, 22, 15, Color8(58, 161, 82))
-	_px(15, 16, 7, 8, Color8(93, 194, 103))
-	_px(27, 16, 7, 8, Color8(93, 194, 103))
-	_px(17, 28, 15, 5, Color8(132, 218, 117))
-	_px(7, 31, 8, 5, Color8(58, 161, 82))
-	_px(34, 31, 8, 5, Color8(58, 161, 82))
-	_px(36, 20, 4, 4, Color8(160, 83, 188))
-	_draw_eye(17, 18)
-	_draw_eye(29, 18)
-
-
-func _draw_fox() -> void:
-	_px(10, 26, 10, 9, Color8(226, 113, 50))
-	_px(18, 21, 18, 14, Color8(226, 113, 50))
-	_px(19, 15, 5, 8, Color8(226, 113, 50))
-	_px(30, 15, 5, 8, Color8(226, 113, 50))
-	_px(24, 28, 9, 6, Color8(255, 232, 192))
-	_px(35, 24, 8, 5, Color8(255, 232, 192))
-	_px(8, 30, 7, 5, Color8(255, 232, 192))
-	_draw_eye(29, 23)
-
-
-func _draw_wolf() -> void:
-	_px(12, 25, 25, 11, Color8(103, 113, 125))
-	_px(19, 18, 17, 11, Color8(127, 137, 149))
-	_px(21, 13, 5, 7, Color8(127, 137, 149))
-	_px(31, 13, 5, 7, Color8(127, 137, 149))
-	_px(35, 23, 8, 5, Color8(180, 188, 190))
-	_px(13, 34, 5, 4, Color8(72, 78, 86))
-	_px(30, 34, 5, 4, Color8(72, 78, 86))
-	_draw_eye(31, 21)
-
-
-func _draw_penguin() -> void:
-	_px(16, 15, 18, 23, Color8(40, 48, 60))
-	_px(20, 19, 10, 16, Color8(238, 243, 236))
-	_px(12, 24, 5, 10, Color8(40, 48, 60))
-	_px(33, 24, 5, 10, Color8(40, 48, 60))
-	_px(23, 26, 5, 3, Color8(238, 166, 58))
-	_px(17, 37, 6, 3, Color8(238, 166, 58))
-	_px(27, 37, 6, 3, Color8(238, 166, 58))
-	_px(36, 17, 4, 4, Color8(118, 199, 220))
-	_draw_eye(21, 20)
-	_draw_eye(28, 20)
-
-
-func _draw_bear() -> void:
-	_px(12, 22, 25, 15, Color8(104, 67, 43))
-	_px(17, 15, 20, 15, Color8(124, 78, 48))
-	_px(15, 13, 6, 6, Color8(104, 67, 43))
-	_px(32, 13, 6, 6, Color8(104, 67, 43))
-	_px(21, 25, 13, 8, Color8(176, 123, 75))
-	_px(8, 28, 7, 6, Color8(104, 67, 43))
-	_px(35, 28, 8, 6, Color8(104, 67, 43))
-	_draw_eye(23, 20)
-	_draw_eye(31, 20)
+	var texture := star_texture()
+	for index in range(unit.star):
+		var rect := _rect(37 - index * 6, 9, 6, 6)
+		if texture == null:
+			draw_rect(rect, Color8(244, 211, 94))
+		else:
+			draw_texture_rect(texture, rect, false)

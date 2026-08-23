@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = "wolf"
+display_name = "늑대"
+habitat = 1
+role = 1
+cost = 2
+max_hp = 30
+attack = 6
+attack_range = 1
+speed = 3
+skill_name = "무리 물기"
+trait_text = "초원/늑대 조합에서 공격력이 살아나는 돌격 기물입니다."

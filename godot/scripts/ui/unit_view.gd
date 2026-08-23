@@ -1,54 +1,83 @@
-class_name UnitPiece
+## 보드와 대기석에 올라가는 기물 한 마리의 표시.
+##
+## 그림은 아직 절차적 드로잉이다. 실제 스프라이트로 교체할 때 _draw_animal 계열만 바뀐다.
+## 애니메이션 상태는 데이터가 아니라 이 뷰가 들고 있으며 CombatEvent가 촉발한다.
+class_name UnitView
 extends Control
 
-var unit_data: Dictionary = {}
-var selected: bool = false
-var draw_offset_px: Vector2 = Vector2.ZERO
+enum Motion { NONE, ATTACK, HIT, STEP }
 
-func set_unit(value: Dictionary) -> void:
-	unit_data = value
+const CANVAS := 48.0
+const ATTACK_MS := 300
+const HIT_MS := 260
+const STEP_MS := 280
+
+var unit: UnitState = null
+var selected := false
+
+var _motion: Motion = Motion.NONE
+var _motion_direction := Vector2.ZERO
+var _motion_start_ms := 0
+var _motion_duration_ms := 1
+var _draw_offset := Vector2.ZERO
+
+
+func set_unit(value: UnitState) -> void:
+	unit = value
 	queue_redraw()
 
 
 func set_selected(value: bool) -> void:
+	if selected == value:
+		return
 	selected = value
 	queue_redraw()
 
 
+func play(motion: Motion, direction: Vector2i) -> void:
+	_motion = motion
+	_motion_direction = Vector2(direction)
+	_motion_start_ms = Time.get_ticks_msec()
+	_motion_duration_ms = _duration_for(motion)
+	queue_redraw()
+
+
+func _duration_for(motion: Motion) -> int:
+	match motion:
+		Motion.ATTACK:
+			return ATTACK_MS
+		Motion.HIT:
+			return HIT_MS
+		Motion.STEP:
+			return STEP_MS
+		_:
+			return 1
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	custom_minimum_size = Vector2(48, 48)
 
 
 func _process(_delta: float) -> void:
-	if _animation_progress() < 1.0:
-		queue_redraw()
+	if _motion == Motion.NONE:
+		return
+	if _progress() >= 1.0:
+		_motion = Motion.NONE
+	queue_redraw()
 
 
 func _draw() -> void:
-	if unit_data.is_empty():
+	if unit == null:
 		return
 
-	draw_offset_px = _current_draw_offset()
-
-	var id := str(unit_data.get("id", "turtle"))
-	var team := str(unit_data.get("team", "player"))
-	var max_hp: int = int(unit_data.get("max_hp", unit_data.get("hp", 1)))
-	if max_hp < 1:
-		max_hp = 1
-	var hp: int = int(unit_data.get("hp", max_hp))
-	if hp < 0:
-		hp = 0
-	if hp > max_hp:
-		hp = max_hp
-	var star := int(unit_data.get("star", 1))
+	_draw_offset = _current_offset()
 
 	_draw_shadow()
-	_draw_team_ring(team)
-	_draw_animal(id)
-	_draw_attack_effect(id)
-	_draw_hp_bar(hp, max_hp)
-	_draw_stars(star)
+	_draw_team_ring()
+	_draw_animal(unit.def.id)
+	_draw_attack_effect(unit.def.id)
+	_draw_hp_bar()
+	_draw_stars()
 	_draw_hit_flash()
 
 	if selected:
@@ -56,57 +85,39 @@ func _draw() -> void:
 
 
 func _scale() -> float:
-	return min(size.x, size.y) / 48.0
+	return minf(size.x, size.y) / CANVAS
 
 
 func _origin() -> Vector2:
-	var s := _scale()
-	return (size - Vector2(48, 48) * s) * 0.5
+	return (size - Vector2(CANVAS, CANVAS) * _scale()) * 0.5
 
 
 func _px(x: int, y: int, w: int, h: int, color: Color) -> void:
-	var s := _scale()
-	draw_rect(Rect2(_origin() + (Vector2(x, y) + draw_offset_px) * s, Vector2(w, h) * s), color)
+	var scale := _scale()
+	draw_rect(Rect2(_origin() + (Vector2(x, y) + _draw_offset) * scale, Vector2(w, h) * scale), color)
 
 
-func _animation_progress() -> float:
-	var start_ms := int(unit_data.get("anim_start_ms", 0))
-	var duration_ms := int(unit_data.get("anim_duration_ms", 1))
-	if start_ms <= 0:
+func _progress() -> float:
+	if _motion == Motion.NONE:
 		return 1.0
-	if duration_ms < 1:
-		duration_ms = 1
-	var elapsed_ms := Time.get_ticks_msec() - start_ms
-	var progress := float(elapsed_ms) / float(duration_ms)
-	if progress < 0.0:
-		return 0.0
-	if progress > 1.0:
-		return 1.0
-	return progress
+	var elapsed := Time.get_ticks_msec() - _motion_start_ms
+	return clampf(float(elapsed) / float(maxi(1, _motion_duration_ms)), 0.0, 1.0)
 
 
-func _current_draw_offset() -> Vector2:
-	var kind := str(unit_data.get("anim_kind", ""))
-	var progress := _animation_progress()
-	if progress >= 1.0:
+func _current_offset() -> Vector2:
+	var progress := _progress()
+	if _motion == Motion.NONE or progress >= 1.0:
 		return Vector2.ZERO
 
-	var dx := float(int(unit_data.get("anim_dx", 0)))
-	var dy := float(int(unit_data.get("anim_dy", 0)))
-	var direction := Vector2(dx, dy)
-	if direction.length_squared() == 0.0:
-		direction = Vector2(1, 0)
-	else:
-		direction = direction.normalized()
+	var direction := _motion_direction
+	direction = Vector2(1, 0) if direction.length_squared() == 0.0 else direction.normalized()
 
-	match kind:
-		"attack":
-			var lunge := sin(progress * PI) * 5.0
-			return direction * lunge
-		"hit":
-			var shake := sin(progress * PI * 8.0) * 2.4 * (1.0 - progress)
-			return Vector2(shake, 0.0)
-		"step":
+	match _motion:
+		Motion.ATTACK:
+			return direction * sin(progress * PI) * 5.0
+		Motion.HIT:
+			return Vector2(sin(progress * PI * 8.0) * 2.4 * (1.0 - progress), 0.0)
+		Motion.STEP:
 			return -direction * 8.0 * (1.0 - progress)
 		_:
 			return Vector2.ZERO
@@ -127,55 +138,56 @@ func _effect_color(id: String) -> Color:
 
 
 func _draw_attack_effect(id: String) -> void:
-	if str(unit_data.get("anim_kind", "")) != "attack":
+	if _motion != Motion.ATTACK:
 		return
-	var progress := _animation_progress()
+	var progress := _progress()
 	if progress >= 1.0:
 		return
 
-	var dx := int(unit_data.get("anim_dx", 1))
-	var dy := int(unit_data.get("anim_dy", 0))
+	var direction := _motion_direction
 	var color := _effect_color(id)
 	var pulse := int(round(sin(progress * PI) * 5.0))
-	if abs(dx) >= abs(dy):
-		var x := 30 if dx >= 0 else 8 - pulse
+	if absf(direction.x) >= absf(direction.y):
+		var x := 30 if direction.x >= 0.0 else 8 - pulse
 		_px(x, 21, 9 + pulse, 2, color)
 		_px(x + 2, 25, 7 + pulse, 2, color)
 	else:
-		var y := 30 if dy >= 0 else 9 - pulse
+		var y := 30 if direction.y >= 0.0 else 9 - pulse
 		_px(22, y, 2, 9 + pulse, color)
 		_px(26, y + 2, 2, 7 + pulse, color)
 
 
 func _draw_hit_flash() -> void:
-	if str(unit_data.get("anim_kind", "")) != "hit":
+	if _motion != Motion.HIT:
 		return
-	var progress := _animation_progress()
+	var progress := _progress()
 	if progress >= 1.0:
 		return
-	var s := _scale()
+	var scale := _scale()
 	var alpha := int(round(120.0 * (1.0 - progress)))
-	var rect := Rect2(_origin() + (Vector2(10, 12) + draw_offset_px) * s, Vector2(28, 25) * s)
-	draw_rect(rect, Color8(255, 245, 215, alpha))
+	draw_rect(
+		Rect2(_origin() + (Vector2(10, 12) + _draw_offset) * scale, Vector2(28, 25) * scale),
+		Color8(255, 245, 215, alpha)
+	)
 
 
 func _draw_shadow() -> void:
 	_px(11, 38, 26, 5, Color8(0, 0, 0, 80))
 
 
-func _draw_team_ring(team: String) -> void:
-	var color := Color8(83, 164, 255) if team == "player" else Color8(239, 91, 91)
+func _draw_team_ring() -> void:
+	var color := Color8(83, 164, 255) if unit.team == UnitState.Team.PLAYER else Color8(239, 91, 91)
 	_px(8, 39, 32, 2, color)
 
 
-func _draw_hp_bar(hp: int, max_hp: int) -> void:
+func _draw_hp_bar() -> void:
 	_px(8, 3, 32, 4, Color8(35, 38, 40))
-	var width := int(round(30.0 * float(hp) / float(max_hp)))
-	_px(9, 4, max(0, width), 2, Color8(88, 214, 116))
+	var ratio := clampf(float(unit.hp) / float(maxi(1, unit.max_hp)), 0.0, 1.0)
+	_px(9, 4, int(round(30.0 * ratio)), 2, Color8(88, 214, 116))
 
 
-func _draw_stars(star: int) -> void:
-	for i in range(star):
+func _draw_stars() -> void:
+	for i in range(unit.star):
 		_px(36 - i * 5, 8, 3, 3, Color8(244, 211, 94))
 
 

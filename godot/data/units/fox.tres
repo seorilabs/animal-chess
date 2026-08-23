@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = "fox"
+display_name = "여우"
+habitat = 0
+role = 3
+cost = 2
+max_hp = 24
+attack = 7
+attack_range = 1
+speed = 4
+skill_name = "후방 기습"
+trait_text = "체력이 낮은 적을 노리기 쉬운 교란형 근접 기물입니다."

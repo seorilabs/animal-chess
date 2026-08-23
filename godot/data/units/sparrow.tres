@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = "sparrow"
+display_name = "참새"
+habitat = 4
+role = 2
+cost = 1
+max_hp = 18
+attack = 5
+attack_range = 3
+speed = 3
+skill_name = "빠른 쪼기"
+trait_text = "후열에서 안정적으로 피해를 누적하는 원거리 딜러입니다."

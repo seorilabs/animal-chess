@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = "rabbit"
+display_name = "토끼"
+habitat = 1
+role = 5
+cost = 1
+max_hp = 20
+attack = 3
+attack_range = 2
+speed = 3
+skill_name = "당근 응원"
+trait_text = "아군 공격 속도를 끌어올리는 초반 지원 기물입니다."

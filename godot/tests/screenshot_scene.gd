@@ -8,6 +8,8 @@ extends Node
 
 const OUTPUT_DIR := "user://shots"
 const WARMUP_FRAMES := 30
+## `--scenario combat`에서 전투를 미리 굴리는 틱 수.
+const COMBAT_PREVIEW_TICKS := 12
 
 
 func _ready() -> void:
@@ -27,6 +29,9 @@ func _ready() -> void:
 
 	for _i in range(WARMUP_FRAMES):
 		await get_tree().process_frame
+	_apply_scenario(main)
+	for _i in range(WARMUP_FRAMES):
+		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 
 	DirAccess.make_dir_recursive_absolute(OUTPUT_DIR)
@@ -42,8 +47,33 @@ func _ready() -> void:
 
 
 func _shot_name() -> String:
+	return _arg("--shot", "screen")
+
+
+## `--scenario combat`은 기물을 배치하고 전투를 몇 틱 굴린 화면을 찍는다.
+func _apply_scenario(main: Control) -> void:
+	if _arg("--scenario", "prep") != "combat":
+		return
+
+	var placements := {
+		Vector2i(2, 6): "turtle",
+		Vector2i(4, 7): "sparrow",
+		Vector2i(5, 6): "wolf",
+	}
+	for cell in placements:
+		var unit := UnitState.create(main.catalog.get_def(placements[cell]), UnitState.Team.PLAYER)
+		unit.set_position(cell)
+		main.run.board[cell] = unit
+	main.run.round_number = 4
+	main._refresh_all()
+	main._start_combat()
+	for _i in range(COMBAT_PREVIEW_TICKS):
+		main._on_combat_tick()
+
+
+func _arg(key: String, fallback: String) -> String:
 	var args := OS.get_cmdline_user_args()
-	var index := args.find("--shot")
+	var index := args.find(key)
 	if index >= 0 and index + 1 < args.size():
 		return args[index + 1]
-	return "screen"
+	return fallback

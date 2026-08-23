@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = "frog"
+display_name = "개구리"
+habitat = 2
+role = 4
+cost = 1
+max_hp = 22
+attack = 3
+attack_range = 2
+speed = 2
+skill_name = "독 방울"
+trait_text = "독으로 체력이 높은 적을 천천히 깎는 주술 기물입니다."

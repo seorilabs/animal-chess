@@ -6,6 +6,8 @@
 extends Node
 
 const TEST_SCRIPTS: PackedStringArray = [
+	"res://tests/combat_test.gd",
+	"res://tests/run_state_test.gd",
 	"res://tests/smoke_test.gd",
 ]
 

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="UnitDef" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_def.gd" id="1_def"]
+
+[resource]
+script = ExtResource("1_def")
+id = "penguin"
+display_name = "펭귄"
+habitat = 3
+role = 4
+cost = 2
+max_hp = 24
+attack = 4
+attack_range = 2
+speed = 2
+skill_name = "빙판"
+trait_text = "적 행동을 늦춰 전투 흐름을 제어하는 극지 주술 기물입니다."

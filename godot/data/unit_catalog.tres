@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="UnitCatalog" load_steps=10 format=3]
+
+[ext_resource type="Script" path="res://scripts/core/unit_catalog.gd" id="1_catalog"]
+[ext_resource type="Resource" path="res://data/units/turtle.tres" id="2_turtle"]
+[ext_resource type="Resource" path="res://data/units/rabbit.tres" id="3_rabbit"]
+[ext_resource type="Resource" path="res://data/units/sparrow.tres" id="4_sparrow"]
+[ext_resource type="Resource" path="res://data/units/frog.tres" id="5_frog"]
+[ext_resource type="Resource" path="res://data/units/fox.tres" id="6_fox"]
+[ext_resource type="Resource" path="res://data/units/wolf.tres" id="7_wolf"]
+[ext_resource type="Resource" path="res://data/units/penguin.tres" id="8_penguin"]
+[ext_resource type="Resource" path="res://data/units/bear.tres" id="9_bear"]
+
+[resource]
+script = ExtResource("1_catalog")
+units = [ExtResource("2_turtle"), ExtResource("3_rabbit"), ExtResource("4_sparrow"), ExtResource("5_frog"), ExtResource("6_fox"), ExtResource("7_wolf"), ExtResource("8_penguin"), ExtResource("9_bear")]

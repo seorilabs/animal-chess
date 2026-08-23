@@ -21,13 +21,14 @@ static func build_wave(
 	catalog: UnitCatalog,
 	round_number: int,
 	count: int,
+	star: int,
 	board: Vector2i,
 	rng: RandomNumberGenerator
 ) -> Array[UnitState]:
 	var ids := _pick_ids(catalog, round_number, count, rng)
 	var wave: Array[UnitState] = []
 	for id in ids:
-		wave.append(UnitState.create(catalog.get_def(id), UnitState.Team.ENEMY))
+		wave.append(UnitState.create(catalog.get_def(id), UnitState.Team.ENEMY, star))
 	_place(wave, board)
 	return wave
 

@@ -36,12 +36,15 @@ var _bench_row: HBoxContainer
 var _shop_row: HBoxContainer
 var _fight_button: Button
 var _reroll_button: Button
-var _ad_button: Button
-var _result_panel: PanelContainer
-var _result_title: Label
-var _result_body: Label
-var _result_button: Button
+var _preview_button: Button
+var _dimmer: ColorRect
+var _wrapup: WrapupSheet
+var _preview: PreviewSheet
 var _combat_timer: Timer
+
+var _reward_choices: Array[Reward] = []
+var _reward_picks_left := 0
+var _ad_reward_used := false
 
 
 func _ready() -> void:
@@ -58,7 +61,12 @@ func new_run(run_seed: int = 0) -> void:
 	sim = CombatSim.new()
 	_combat_running = false
 	_wrapup_active = false
-	_result_panel.visible = false
+	_wrapup.visible = false
+	_preview.visible = false
+	_reward_choices.clear()
+	_reward_picks_left = 0
+	_ad_reward_used = false
+	_update_dimmer()
 	_clear_selection()
 	_board.interactive = true
 	_set_message("기물을 사고 아래쪽 보드에 배치한 뒤 전투를 시작하세요.")
@@ -118,7 +126,7 @@ func _build_ui() -> void:
 	_shop_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_child(_shop_row)
 
-	_build_result_overlay()
+	_build_overlays()
 
 	_combat_timer = Timer.new()
 	_combat_timer.wait_time = COMBAT_TICK_SECONDS
@@ -162,17 +170,17 @@ func _build_controls() -> Control:
 	_fight_button.pressed.connect(_start_combat)
 	controls.add_child(_fight_button)
 
+	_preview_button = Button.new()
+	_preview_button.text = "상대 보기"
+	_preview_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_preview_button.pressed.connect(_on_preview)
+	controls.add_child(_preview_button)
+
 	_reroll_button = Button.new()
 	_reroll_button.text = "새로고침 -%d" % Shop.REROLL_COST
 	_reroll_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_reroll_button.pressed.connect(_on_reroll)
 	controls.add_child(_reroll_button)
-
-	_ad_button = Button.new()
-	_ad_button.text = "광고 보상"
-	_ad_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_ad_button.pressed.connect(_on_ad_reward)
-	controls.add_child(_ad_button)
 	return controls
 
 
@@ -183,36 +191,32 @@ func _section_label(text: String) -> Label:
 	return label
 
 
-func _build_result_overlay() -> void:
-	var overlay := CenterContainer.new()
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(overlay)
+func _build_overlays() -> void:
+	_dimmer = ColorRect.new()
+	_dimmer.color = Color(0, 0, 0, 0.6)
+	_dimmer.visible = false
+	_dimmer.mouse_filter = Control.MOUSE_FILTER_STOP
+	_dimmer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_dimmer)
 
-	_result_panel = PanelContainer.new()
-	_result_panel.visible = false
-	_result_panel.custom_minimum_size = Vector2(560, 0)
-	overlay.add_child(_result_panel)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(center)
 
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 12)
-	_result_panel.add_child(box)
+	_wrapup = WrapupSheet.new()
+	_wrapup.reward_chosen.connect(_on_reward_chosen)
+	_wrapup.ad_requested.connect(_on_reward_ad)
+	_wrapup.continue_pressed.connect(_on_wrapup_continue)
+	center.add_child(_wrapup)
 
-	_result_title = Label.new()
-	_result_title.add_theme_font_size_override("font_size", 40)
-	_result_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(_result_title)
+	_preview = PreviewSheet.new()
+	_preview.closed.connect(_update_dimmer)
+	center.add_child(_preview)
 
-	_result_body = Label.new()
-	_result_body.add_theme_font_size_override("font_size", 22)
-	_result_body.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_result_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_result_body)
 
-	_result_button = Button.new()
-	_result_button.text = "다음 턴"
-	_result_button.pressed.connect(_on_wrapup_continue)
-	box.add_child(_result_button)
+func _update_dimmer() -> void:
+	_dimmer.visible = _wrapup.visible or _preview.visible
 
 
 # --- 준비 단계 입력 -----------------------------------------------------
@@ -287,12 +291,11 @@ func _on_reroll() -> void:
 	_refresh_all()
 
 
-func _on_ad_reward() -> void:
-	if not _is_prep():
+func _on_preview() -> void:
+	if _combat_running or _wrapup_active:
 		return
-	run.watch_ad_reward()
-	_set_message("광고 보상 mock: 골드 +%d." % RunState.AD_REWARD_GOLD)
-	_refresh_all()
+	_preview.open(run)
+	_update_dimmer()
 
 
 func _report(action: RunState.Action, success_message: String) -> void:
@@ -327,16 +330,15 @@ func _start_combat() -> void:
 		_set_message("최소 1마리를 배치해야 합니다.")
 		return
 
-	var wave := AIDirector.build_wave(
-		catalog, run.round_number, run.deployed_count(), RunState.BOARD, run.rng
-	)
 	sim = CombatSim.new()
-	sim.setup(run.deployed_units(), wave, RunState.BOARD)
+	sim.setup(run.deployed_units(), run.next_wave, RunState.BOARD)
 
 	_combat_running = true
 	_board.interactive = false
+	_preview.visible = false
+	_update_dimmer()
 	_clear_selection()
-	_set_message("%d라운드 전투 시작." % run.round_number)
+	_set_message("%s 전투 시작." % run.round_label())
 	_refresh_all()
 	_combat_timer.start()
 
@@ -399,9 +401,6 @@ func _show_wrapup(
 	rewards: Dictionary
 ) -> void:
 	_wrapup_active = true
-	_result_panel.visible = true
-	_result_title.text = _result_title_text(result)
-	_result_button.text = "새 게임" if run.is_over() else "다음 턴"
 
 	var lines: PackedStringArray = [
 		"%d라운드 결과" % finished_round,
@@ -411,14 +410,64 @@ func _show_wrapup(
 		lines.append("획득 골드 +%d" % int(rewards["gold_gain"]))
 	if int(rewards["hp_loss"]) > 0:
 		lines.append("체력 피해 -%d" % int(rewards["hp_loss"]))
+
+	_reward_choices = []
+	if result == CombatSim.Result.PLAYER_WIN and not run.is_over():
+		_reward_choices = Reward.roll_choices(run)
+	_reward_picks_left = 1 if not _reward_choices.is_empty() else 0
+	_ad_reward_used = false
+
 	if run.is_over():
-		lines.append("체력이 0이 되어 런이 종료되었습니다.")
+		lines.append(_run_end_text())
 	else:
 		lines.append("다음 라운드: 보유 %d마리, 배치 %d마리" % [run.owned_cap(), run.deploy_cap()])
-	_result_body.text = "\n".join(lines)
+
+	_wrapup.show_result(
+		_result_title_text(result, run.outcome),
+		"\n".join(lines),
+		"새 게임" if run.is_over() else "다음 턴"
+	)
+	_wrapup.show_rewards(_reward_choices, false)
+	_update_dimmer()
 
 
-func _result_title_text(result: CombatSim.Result) -> String:
+func _run_end_text() -> String:
+	if run.outcome == RunState.Outcome.VICTORY:
+		return "최종 상대를 꺾고 런을 완주했습니다."
+	return "체력이 0이 되어 런이 종료되었습니다."
+
+
+func _on_reward_chosen(index: int) -> void:
+	if _reward_picks_left <= 0 or index < 0 or index >= _reward_choices.size():
+		return
+	var reward := _reward_choices[index]
+	if not reward.grant(run):
+		_wrapup.set_body("대기석이 가득 차 기물을 받을 수 없습니다. 다른 보상을 고르세요.")
+		return
+
+	_reward_picks_left -= 1
+	_reward_choices.remove_at(index)
+	var remaining: Array[Reward] = []
+	if _reward_picks_left > 0:
+		remaining = _reward_choices
+	_wrapup.show_rewards(remaining, not _ad_reward_used and not _reward_choices.is_empty())
+	_wrapup.set_body("%s 을(를) 받았습니다." % reward.label)
+	_refresh_all()
+
+
+## 보상형 광고 mock. 실제 광고 SDK는 아직 붙어 있지 않다.
+func _on_reward_ad() -> void:
+	if _ad_reward_used or _reward_choices.is_empty():
+		return
+	_ad_reward_used = true
+	_reward_picks_left += 1
+	_wrapup.show_rewards(_reward_choices, false)
+	_wrapup.set_body("광고 보상 mock: 하나 더 고르세요.")
+
+
+func _result_title_text(result: CombatSim.Result, outcome: RunState.Outcome) -> String:
+	if outcome == RunState.Outcome.VICTORY:
+		return "런 완주"
 	match result:
 		CombatSim.Result.PLAYER_WIN:
 			return "승리"
@@ -433,11 +482,12 @@ func _on_wrapup_continue() -> void:
 		new_run()
 		return
 	_wrapup_active = false
-	_result_panel.visible = false
+	_wrapup.visible = false
+	_update_dimmer()
 	_board.interactive = true
-	run.roll_shop()
+	run.prepare_round()
 	_clear_selection()
-	_set_message("%d라운드 준비." % run.round_number)
+	_set_message("%s 준비." % run.round_status())
 	_refresh_all()
 
 
@@ -454,8 +504,8 @@ func _refresh_all() -> void:
 
 
 func _refresh_status() -> void:
-	_status_label.text = "%d라운드  체력 %d  골드 %d\n보유 %d/%d  배치 %d/%d" % [
-		run.round_number, run.player_hp, run.gold,
+	_status_label.text = "%s  체력 %d  골드 %d\n보유 %d/%d  배치 %d/%d" % [
+		run.round_status(), run.player_hp, run.gold,
 		run.owned_count(), run.owned_cap(),
 		run.deployed_count(), run.deploy_cap(),
 	]
@@ -537,8 +587,8 @@ func _refresh_shop() -> void:
 
 func _refresh_buttons() -> void:
 	_fight_button.disabled = not _is_prep()
+	_preview_button.disabled = _combat_running or _wrapup_active
 	_reroll_button.disabled = not _is_prep() or run.gold < Shop.REROLL_COST
-	_ad_button.disabled = not _is_prep()
 
 
 func _set_message(value: String) -> void:

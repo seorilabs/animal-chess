@@ -50,25 +50,42 @@ func _shot_name() -> String:
 	return _arg("--shot", "screen")
 
 
-## `--scenario combat`은 기물을 배치하고 전투를 몇 틱 굴린 화면을 찍는다.
+## 장면별 상태를 만든다. combat / preview / wrapup / prep(기본).
 func _apply_scenario(main: Control) -> void:
-	if _arg("--scenario", "prep") != "combat":
+	var scenario := _arg("--scenario", "prep")
+	if scenario == "prep":
 		return
 
+	main.run.round_number = 4
+	main.run.prepare_round()
+	_place_sample_board(main)
+	main._refresh_all()
+
+	match scenario:
+		"preview":
+			main._on_preview()
+		"combat":
+			main._start_combat()
+			for _i in range(COMBAT_PREVIEW_TICKS):
+				main._on_combat_tick()
+		"wrapup":
+			main._start_combat()
+			while main.sim.is_running():
+				main._on_combat_tick()
+
+
+func _place_sample_board(main: Control) -> void:
 	var placements := {
-		Vector2i(2, 6): "turtle",
-		Vector2i(4, 7): "sparrow",
-		Vector2i(5, 6): "wolf",
+		Vector2i(2, 4): "turtle",
+		Vector2i(3, 4): "bear",
+		Vector2i(4, 4): "wolf",
+		Vector2i(3, 5): "sparrow",
+		Vector2i(4, 5): "frog",
 	}
-	for cell in placements:
+	for cell: Vector2i in placements:
 		var unit := UnitState.create(main.catalog.get_def(placements[cell]), UnitState.Team.PLAYER)
 		unit.set_position(cell)
 		main.run.board[cell] = unit
-	main.run.round_number = 4
-	main._refresh_all()
-	main._start_combat()
-	for _i in range(COMBAT_PREVIEW_TICKS):
-		main._on_combat_tick()
 
 
 func _arg(key: String, fallback: String) -> String:

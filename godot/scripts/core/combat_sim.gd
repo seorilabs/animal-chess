@@ -82,9 +82,9 @@ func tick() -> Array[CombatEvent]:
 			continue
 		if unit.distance_to(target) <= unit.attack_range:
 			_attack(unit, target, events)
-			unit.cooldown = maxi(2, 6 - unit.speed)
+			unit.cooldown = maxi(3, 9 - unit.speed)
 		elif _step_toward(unit, target, events):
-			unit.cooldown = maxi(1, 4 - int(unit.speed / 2.0))
+			unit.cooldown = maxi(1, 3 - int(unit.speed / 2.0))
 
 	_report_deaths(events)
 	_update_result()
@@ -214,22 +214,34 @@ func allies_of(unit: UnitState, include_self: bool = true) -> Array[UnitState]:
 
 
 func _step_toward(unit: UnitState, target: UnitState, events: Array[CombatEvent]) -> bool:
-	var delta := target.position() - unit.position()
-	var step_x := Vector2i(unit.x + signi(delta.x), unit.y)
-	var step_y := Vector2i(unit.x, unit.y + signi(delta.y))
-	# 더 많이 벌어진 축을 먼저 좁힌다.
-	var options: Array[Vector2i] = [step_x, step_y]
-	if absi(delta.x) < absi(delta.y):
-		options = [step_y, step_x]
-
-	for option in options:
+	for option in _step_options(unit, target):
 		if not is_free(option):
 			continue
-		var from_pos := unit.position()
+		var from_position := unit.position()
 		unit.set_position(option)
-		events.append(CombatEvent.move(unit, from_pos, option))
+		events.append(CombatEvent.move(unit, from_position, option))
 		return true
 	return false
+
+
+## 목표에 가까워지는 순서로 네 방향을 모두 후보에 둔다.
+## 두 방향만 보면 아군끼리 길을 막았을 때 영영 멈춰 서서 근접 기물이 무력해진다.
+func _step_options(unit: UnitState, target: UnitState) -> Array[Vector2i]:
+	var here := unit.position()
+	var candidates: Array[Vector2i] = [
+		here + Vector2i.RIGHT, here + Vector2i.LEFT,
+		here + Vector2i.DOWN, here + Vector2i.UP,
+	]
+	var goal := target.position()
+	candidates.sort_custom(
+		func(a: Vector2i, b: Vector2i) -> bool:
+			return _manhattan(a, goal) < _manhattan(b, goal)
+	)
+	return candidates
+
+
+static func _manhattan(a: Vector2i, b: Vector2i) -> int:
+	return absi(a.x - b.x) + absi(a.y - b.y)
 
 
 func is_free(pos: Vector2i) -> bool:

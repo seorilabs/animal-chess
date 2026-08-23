@@ -11,6 +11,8 @@ func run(_host: Node) -> void:
 	_test_buy_limits(catalog)
 	_test_placement(catalog)
 	_test_round_results(catalog)
+	_test_final_round_victory(catalog)
+	_test_elite_round(catalog)
 
 
 func _test_caps(catalog: UnitCatalog) -> void:
@@ -87,13 +89,44 @@ func _test_round_results(catalog: UnitCatalog) -> void:
 	check_eq(run.round_number, 2, "승리 후 라운드 진행")
 
 	var before_hp := run.player_hp
-	var loss := run.apply_result(CombatSim.Result.ENEMY_WIN, 3)
-	check_eq(int(loss["hp_loss"]), 3, "남은 적 수만큼 체력을 잃어야 합니다")
-	check_eq(run.player_hp, before_hp - 3, "체력 반영")
+	var loss := run.apply_result(CombatSim.Result.ENEMY_WIN, 6)
+	check_eq(int(loss["hp_loss"]), 5, "남은 적 수에 따라 체력을 잃어야 합니다")
+	check_eq(run.player_hp, before_hp - 5, "체력 반영")
+
+	var capped := run.apply_result(CombatSim.Result.ENEMY_WIN, 40)
+	check_eq(int(capped["hp_loss"]), RunState.MAX_DEFEAT_DAMAGE, "패배 피해에는 상한이 있어야 합니다")
 
 	var draw := run.apply_result(CombatSim.Result.DRAW, 1)
 	check_eq(int(draw["gold_gain"]), 0, "무승부는 보상이 없어야 합니다")
 	check_eq(int(draw["hp_loss"]), RunState.DRAW_DAMAGE, "무승부는 소액 피해만 있어야 합니다")
 
-	run.player_hp = 0
-	check(run.is_over(), "체력이 0이면 런이 끝나야 합니다")
+	run.player_hp = RunState.MIN_DEFEAT_DAMAGE
+	run.round_number = 1
+	run.apply_result(CombatSim.Result.ENEMY_WIN, RunState.MIN_DEFEAT_DAMAGE)
+	check_eq(run.outcome, RunState.Outcome.DEFEAT, "체력이 0이 되면 런이 끝나야 합니다")
+	check(run.is_over(), "패배한 런은 종료 상태여야 합니다")
+
+
+## 최종 라운드를 이기면 런을 완주한다.
+func _test_final_round_victory(catalog: UnitCatalog) -> void:
+	var run := RunState.create(catalog, SEED)
+	run.round_number = RunState.FINAL_ROUND
+	check(run.is_boss_round(), "최종 라운드는 보스 라운드여야 합니다")
+	check_eq(run.wave_size(), run.deploy_cap(), "최종 상대 수는 배치 한도와 같아야 합니다")
+	check_eq(run.wave_star(), RunState.BOSS_STAR, "최종 상대는 등급이 높아야 합니다")
+
+	run.apply_result(CombatSim.Result.PLAYER_WIN, 0)
+	check_eq(run.outcome, RunState.Outcome.VICTORY, "최종 상대를 이기면 완주여야 합니다")
+
+
+## 정예 라운드는 상대가 한 마리 더 나온다.
+func _test_elite_round(catalog: UnitCatalog) -> void:
+	var run := RunState.create(catalog, SEED)
+	run.round_number = RunState.ELITE_ROUNDS[0]
+	check(run.is_elite_round(), "정예 라운드여야 합니다")
+	check_eq(
+		run.wave_size(), run.deploy_cap() + RunState.ELITE_EXTRA_UNITS,
+		"정예 라운드 상대는 한 마리 더 많아야 합니다"
+	)
+	run.prepare_round()
+	check_eq(run.next_wave.size(), run.wave_size(), "미리 만든 상대 수가 맞아야 합니다")

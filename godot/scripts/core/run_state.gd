@@ -263,6 +263,78 @@ func deployed_units() -> Array[UnitState]:
 	return units
 
 
+# --- 저장 ---------------------------------------------------------------
+
+func to_dict() -> Dictionary:
+	var bench_data: Array = []
+	for unit in bench:
+		bench_data.append(null if unit == null else unit.to_dict())
+
+	var board_data: Array = []
+	for cell: Vector2i in board:
+		board_data.append((board[cell] as UnitState).to_dict())
+
+	var wave_data: Array = []
+	for unit in next_wave:
+		wave_data.append(unit.to_dict())
+
+	return {
+		"seed": seed,
+		"rng_state": rng.state,
+		"round_number": round_number,
+		"player_hp": player_hp,
+		"gold": gold,
+		"shop_offers": Array(shop_offers),
+		"bench": bench_data,
+		"board": board_data,
+		"next_wave": wave_data,
+	}
+
+
+## 저장된 런을 복원한다. 데이터가 망가졌으면 null.
+static func from_dict(unit_catalog: UnitCatalog, data: Dictionary) -> RunState:
+	if not data.has("round_number") or not data.has("player_hp"):
+		return null
+
+	var run := RunState.new()
+	run.catalog = unit_catalog
+	run.seed = int(data.get("seed", 0))
+	run.rng.seed = run.seed
+	run.rng.state = int(data.get("rng_state", run.rng.state))
+	run.round_number = maxi(1, int(data["round_number"]))
+	run.player_hp = int(data["player_hp"])
+	run.gold = int(data.get("gold", 0))
+	run.outcome = Outcome.ONGOING
+
+	run.shop_offers = PackedStringArray()
+	for offer in data.get("shop_offers", []):
+		if unit_catalog.has(str(offer)):
+			run.shop_offers.append(str(offer))
+
+	run.bench.clear()
+	run.bench.resize(BENCH_SIZE)
+	var bench_data: Array = data.get("bench", [])
+	for index in range(mini(bench_data.size(), BENCH_SIZE)):
+		if bench_data[index] == null:
+			continue
+		run.bench[index] = UnitState.from_dict(unit_catalog, bench_data[index], UnitState.Team.PLAYER)
+
+	run.board.clear()
+	for entry in data.get("board", []):
+		var unit := UnitState.from_dict(unit_catalog, entry, UnitState.Team.PLAYER)
+		if unit != null and run.is_player_cell(unit.position()):
+			run.board[unit.position()] = unit
+
+	run.next_wave.clear()
+	for entry in data.get("next_wave", []):
+		var enemy := UnitState.from_dict(unit_catalog, entry, UnitState.Team.ENEMY)
+		if enemy != null:
+			run.next_wave.append(enemy)
+	if run.next_wave.is_empty() or run.shop_offers.is_empty():
+		run.prepare_round()
+	return run
+
+
 # --- 라운드 결산 --------------------------------------------------------
 
 func apply_result(result: CombatSim.Result, enemy_alive: int) -> Dictionary:

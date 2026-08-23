@@ -84,6 +84,20 @@ func clone_for_battle() -> UnitState:
 	return copy
 
 
+func to_dict() -> Dictionary:
+	return {"id": def.id, "star": star, "x": x, "y": y}
+
+
+static func from_dict(catalog: UnitCatalog, data: Dictionary, team_value: Team) -> UnitState:
+	var id := str(data.get("id", ""))
+	if not catalog.has(id):
+		return null
+	var unit := create(catalog.get_def(id), team_value, int(data.get("star", 1)))
+	unit.x = int(data.get("x", 0))
+	unit.y = int(data.get("y", 0))
+	return unit
+
+
 func is_alive() -> bool:
 	return hp > 0
 

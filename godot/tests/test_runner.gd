@@ -11,6 +11,7 @@ const TEST_SCRIPTS: PackedStringArray = [
 	"res://tests/synergy_test.gd",
 	"res://tests/skills_test.gd",
 	"res://tests/merge_test.gd",
+	"res://tests/save_test.gd",
 	"res://tests/run_length_test.gd",
 	"res://tests/smoke_test.gd",
 ]

@@ -10,6 +10,8 @@ const OUTPUT_DIR := "user://shots"
 const WARMUP_FRAMES := 30
 ## `--scenario combat`에서 전투를 미리 굴리는 틱 수.
 const COMBAT_PREVIEW_TICKS := 12
+## 저장된 런에 좌우되지 않도록 스크린샷은 항상 같은 시드로 시작한다.
+const SHOT_SEED := 20260823
 
 
 func _ready() -> void:
@@ -52,6 +54,7 @@ func _shot_name() -> String:
 
 ## 장면별 상태를 만든다. combat / preview / wrapup / prep(기본).
 func _apply_scenario(main: Control) -> void:
+	main.new_run(SHOT_SEED)
 	var scenario := _arg("--scenario", "prep")
 	if scenario == "prep":
 		return
@@ -62,6 +65,11 @@ func _apply_scenario(main: Control) -> void:
 	main._refresh_all()
 
 	match scenario:
+		"codex":
+			for unit_def in main.catalog.defs().slice(0, 7):
+				main.profile.unlock(unit_def.id)
+			main.profile.record_round(12)
+			main._on_codex()
 		"preview":
 			main._on_preview()
 		"combat":

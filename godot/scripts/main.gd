@@ -17,6 +17,7 @@ const ACTION_MESSAGES := {
 enum Selection { NONE, BENCH, BOARD }
 
 var catalog: UnitCatalog
+var profile: Profile
 var run: RunState
 var sim := CombatSim.new()
 
@@ -40,6 +41,7 @@ var _preview_button: Button
 var _dimmer: ColorRect
 var _wrapup: WrapupSheet
 var _preview: PreviewSheet
+var _codex: CodexSheet
 var _combat_timer: Timer
 
 var _reward_choices: Array[Reward] = []
@@ -49,15 +51,32 @@ var _ad_reward_used := false
 
 func _ready() -> void:
 	catalog = UnitCatalog.load_default()
+	profile = SaveService.load_profile()
 	_build_ui()
-	new_run()
+	_resume_or_start()
+
+
+## 저장된 런이 있으면 이어서, 없으면 새로 시작한다.
+func _resume_or_start() -> void:
+	var saved := SaveService.load_run(catalog)
+	if saved == null:
+		new_run()
+		return
+	run = saved
+	_enter_prep("%s 이어하기." % run.round_status())
 
 
 ## 새 런을 시작한다. 시드를 주면 같은 런을 그대로 재현한다.
 func new_run(run_seed: int = 0) -> void:
 	if run_seed == 0:
 		run_seed = randi()
+	SaveService.clear_run()
 	run = RunState.create(catalog, run_seed)
+	_enter_prep("기물을 사고 아래쪽 보드에 배치한 뒤 전투를 시작하세요.")
+
+
+## 준비 단계로 들어가며 화면 상태를 정리한다.
+func _enter_prep(message: String) -> void:
 	sim = CombatSim.new()
 	_combat_running = false
 	_wrapup_active = false
@@ -66,10 +85,11 @@ func new_run(run_seed: int = 0) -> void:
 	_reward_choices.clear()
 	_reward_picks_left = 0
 	_ad_reward_used = false
+	_codex.visible = false
 	_update_dimmer()
 	_clear_selection()
 	_board.interactive = true
-	_set_message("기물을 사고 아래쪽 보드에 배치한 뒤 전투를 시작하세요.")
+	_set_message(message)
 	_refresh_all()
 
 
@@ -143,6 +163,11 @@ func _build_header() -> Control:
 	_status_label.add_theme_font_size_override("font_size", 24)
 	header.add_child(_status_label)
 
+	var codex_button := Button.new()
+	codex_button.text = "도감"
+	codex_button.pressed.connect(_on_codex)
+	header.add_child(codex_button)
+
 	var new_button := Button.new()
 	new_button.text = "새 게임"
 	new_button.pressed.connect(func() -> void: new_run())
@@ -214,9 +239,13 @@ func _build_overlays() -> void:
 	_preview.closed.connect(_update_dimmer)
 	center.add_child(_preview)
 
+	_codex = CodexSheet.new()
+	_codex.closed.connect(_update_dimmer)
+	center.add_child(_codex)
+
 
 func _update_dimmer() -> void:
-	_dimmer.visible = _wrapup.visible or _preview.visible
+	_dimmer.visible = _wrapup.visible or _preview.visible or _codex.visible
 
 
 # --- 준비 단계 입력 -----------------------------------------------------
@@ -289,6 +318,11 @@ func _on_reroll() -> void:
 		return
 	_report(run.reroll(), "상점을 새로고침했습니다.")
 	_refresh_all()
+
+
+func _on_codex() -> void:
+	_codex.open(catalog, profile)
+	_update_dimmer()
 
 
 func _on_preview() -> void:
@@ -389,6 +423,10 @@ func _finish_combat() -> void:
 	var rewards := run.apply_result(result, enemy_alive)
 
 	_combat_running = false
+	if run.is_over():
+		profile.record_run_end(run.outcome == RunState.Outcome.VICTORY)
+		SaveService.save_profile(profile)
+		SaveService.clear_run()
 	_show_wrapup(finished_round, result, player_alive, enemy_alive, rewards)
 	_refresh_all()
 
@@ -481,19 +519,14 @@ func _on_wrapup_continue() -> void:
 	if run.is_over():
 		new_run()
 		return
-	_wrapup_active = false
-	_wrapup.visible = false
-	_update_dimmer()
-	_board.interactive = true
 	run.prepare_round()
-	_clear_selection()
-	_set_message("%s 준비." % run.round_status())
-	_refresh_all()
+	_enter_prep("%s 준비." % run.round_status())
 
 
 # --- 화면 갱신 ----------------------------------------------------------
 
 func _refresh_all() -> void:
+	_sync_profile()
 	_refresh_status()
 	_refresh_synergy()
 	_refresh_detail()
@@ -501,6 +534,22 @@ func _refresh_all() -> void:
 	_refresh_bench()
 	_refresh_shop()
 	_refresh_buttons()
+
+
+## 보유한 기물을 도감에 해금하고, 준비 단계라면 진행 상황을 저장한다.
+func _sync_profile() -> void:
+	var changed := false
+	for unit in run.owned_units():
+		if profile.unlock(unit.def.id):
+			changed = true
+	if run.round_number > profile.best_round:
+		profile.record_round(run.round_number)
+		changed = true
+	if changed:
+		SaveService.save_profile(profile)
+
+	if not _combat_running and not run.is_over():
+		SaveService.save_run(run)
 
 
 func _refresh_status() -> void:

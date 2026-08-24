@@ -8,7 +8,7 @@ signal settings_requested
 
 const BACKGROUND_PATH := "res://assets/art/bg_title.png"
 const MASCOT_PATH := "res://assets/art/unit_turtle.png"
-const TITLE_TEXT := "애니멀 체스"
+const TITLE_TEXT := "픽셀 동물전장"
 const SUBTITLE_TEXT := "동물을 모아 배치하고 자동 전투로 겨루는 픽셀 전략"
 ## 마스코트가 위아래로 떠 있는 폭과 주기.
 const BOB_PIXELS := 10.0

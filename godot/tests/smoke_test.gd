@@ -44,3 +44,5 @@ func run(host: Node) -> void:
 		main.run.round_number, main.run.player_hp, main.run.gold
 	])
 	router.queue_free()
+	# 테스트가 실제 플레이 저장을 남기지 않도록 지운다.
+	SaveService.clear_all()

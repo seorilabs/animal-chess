@@ -1,6 +1,12 @@
-# Animal Chess
+# Critter Tactics (픽셀 동물전장)
 
 Pixel-style animal auto battler built with Godot.
+
+Store display name is **Critter Tactics** in English and **픽셀 동물전장** in Korean.
+The repository, package name, and bundle ID stay `animal-chess` /
+`com.seorilabs.animalchess` — they are not user-facing search terms, and the
+English name `Animal Chess` collides with the traditional board game Dou Shou Qi,
+which already has store listings under that name.
 
 ## Current Slice
 

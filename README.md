@@ -51,7 +51,7 @@ godot --headless --path godot --scene res://tests/test_runner.tscn
 The full gate (import pass, compile check, log inspection, then the tests):
 
 ```bash
-~/.claude/skills/godot-game/scripts/godot_quality_gate.sh --project godot \
+bash scripts/godot_quality_gate.sh --project godot \
   --smoke-scene res://tests/test_runner.tscn
 ```
 

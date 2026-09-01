@@ -89,5 +89,5 @@ fi
 run_godot_check "compile" "${godot_bin}" --headless --path "${project}" --quit
 
 if [ -n "${smoke_scene}" ]; then
-  run_godot_check "smoke" "${godot_bin}" --headless --path "${project}" "${smoke_scene}"
+  run_godot_check "smoke" "${godot_bin}" --headless --path "${project}" --scene "${smoke_scene}"
 fi

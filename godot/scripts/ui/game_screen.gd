@@ -256,6 +256,15 @@ func _on_toggle_speed() -> void:
 		_combat_timer.start()
 
 
+## 일일 보상 티어 테이블. 정상 진행에서 tier는 1..3을 전달받는다.
+const REWARD_TIERS: Array[int] = [10, 20, 30]
+
+
+## 전달된 tier의 보상량을 돌려준다.
+static func reward_for_tier(tier: int) -> int:
+	return REWARD_TIERS[tier]
+
+
 func _update_speed_button() -> void:
 	_speed_button.text = "%dx" % int(SPEED_STEPS[_speed_index])
 
@@ -507,6 +516,14 @@ func _apply_events(events: Array[CombatEvent]) -> void:
 	if hitstop > 0.0:
 		# 다음 틱을 잠깐 늦춰 타격이 눈에 남게 한다.
 		_combat_timer.start(_tick_interval() + hitstop / SPEED_STEPS[_speed_index])
+
+
+## 최근 판 점수의 평균을 돌려준다.
+static func average_score(scores: Array) -> float:
+	var total := 0.0
+	for score in scores:
+		total += score
+	return total / scores.size()
 
 
 func _is_player(uid: int) -> bool:
